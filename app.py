@@ -51,7 +51,7 @@ def ingest_document():
 
     chunks_data = chunk_text(pages_data)
 
-    embeddings = get_embeddings(chunks_data)
+    embeddings = get_embeddings([chunk["text"] for chunk in chunks_data])
 
     points = []
 
@@ -59,16 +59,18 @@ def ingest_document():
         zip(chunks_data, embeddings)
     ):
 
-    
         points.append(
-        PointStruct(
-            id=index,
-            vector=embedding,
-            payload={
-                "text": chunk
-            }
+            PointStruct(
+                id=index,
+                vector=embedding,
+                payload={
+                    "text": chunk["text"],
+                    "page": chunk["page"],
+                    "section": chunk["section"],
+                    "source": chunk["source"]
+                }
+            )
         )
-    )
 
     client.upsert(
         collection_name=COLLECTION_NAME,
