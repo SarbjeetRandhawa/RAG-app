@@ -2,6 +2,7 @@ from ingestion.extract import extract_text
 from ingestion.clean import clean_text
 from ingestion.chunk import chunk_text
 from ingestion.embed import get_embeddings
+from models.reranker import rerank
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -12,7 +13,7 @@ from qdrant_client.models import (
 
 PDF_PATH = "data/data.pdf"
 
-COLLECTION_NAME = "documents_v2"
+COLLECTION_NAME = "documents_v3"
 
 
 client = QdrantClient(
@@ -44,18 +45,18 @@ def create_collection():
 
 def ingest_document():
 
-    text = extract_text(PDF_PATH)
+    pages_data = extract_text(PDF_PATH)
 
-    text = clean_text(text)
+    pages_data = clean_text(pages_data)
 
-    chunks = chunk_text(text)
+    chunks_data = chunk_text(pages_data)
 
-    embeddings = get_embeddings(chunks)
+    embeddings = get_embeddings(chunks_data)
 
     points = []
 
     for index, (chunk, embedding) in enumerate(
-        zip(chunks, embeddings)
+        zip(chunks_data, embeddings)
     ):
 
     
@@ -90,23 +91,37 @@ def search():
     results = client.query_points(
         collection_name=COLLECTION_NAME,
         query=query_embedding,
-        limit=5
+        limit=20
     )
+
+    # print("\nQdrant Results Before Reranking\n")
+
+    # for i, hit in enumerate(results.points[:10]):
+    #     print("=" * 80)
+    #     print(f"Rank: {i+1}")
+    #     print(f"Qdrant Score: {hit.score:.4f}")
+    #     print(hit.payload["text"][:200])
+    #     print()
+
+    chunks = [hit.payload["text"] for hit in results.points]
+
+    reranked_results = rerank(query, chunks)
 
     print("\nResults\n")
 
-    for hit in results.points:
+    # Display the top 5 reranked results
+    for res in reranked_results[:5]:
 
         print("=" * 80)
 
         print(
-            f"Score: {hit.score:.4f}"
+            f"Score: {res['score']:.4f}"
         )
 
         print()
 
         print(
-            hit.payload["text"]
+            res["text"]
         )
 
         print()

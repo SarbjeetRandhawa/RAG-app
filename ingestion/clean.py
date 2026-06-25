@@ -1,7 +1,10 @@
 import re
 
-def clean_text(text):
+def clean_text(pages_data):
 
-    text = re.sub(r"\s+", " ", text)
+    for page in pages_data:
+        text = page["text"]
+        text = re.sub(r"\s+", " ", text)
+        page["text"] = text.strip()
 
-    return text.strip()
+    return pages_data

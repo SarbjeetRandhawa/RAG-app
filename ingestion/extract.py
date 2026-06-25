@@ -4,13 +4,13 @@ def extract_text(pdf_path):
 
     doc = fitz.open(pdf_path)
 
-    text = ""
+    pages_data = []
 
-    for page in doc:
-        text += page.get_text()
+    for i, page in enumerate(doc):
+        pages_data.append({
+            "text": page.get_text(),
+            "page": i + 1,
+            "source": pdf_path
+        })
 
-    return text
-
-# text = extract_text("data/data.pdf")
-
-# print(text[:1000])
+    return pages_data
