@@ -10,6 +10,8 @@ from ingestion.chunk import chunk_text
 from ingestion.embed import get_embeddings
 from models.reranker import rerank
 from models.chunk import Chunk
+from generation.prompt_builder import build_prompt
+from generation.llm import generate_answer
 
 def main():
     print("Testing extraction, cleaning, and chunking...")
@@ -39,11 +41,29 @@ def main():
     print(f"Generated embedding of size: {len(embeddings[0])}")
     
     print("Testing reranker...")
-    reranked = rerank("What is this document about?", chunks[:5])
+    query = "What is this document about?"
+    reranked = rerank(query, chunks[:5])
     print("Reranked successfully.")
     for c in reranked:
         print(f"Chunk ID: {c.chunk_id} | Score: {c.score:.4f} | Tokens: {c.token_count}")
-        
+
+    print("\nTesting generation...")
+    # Convert top reranked Chunk objects to dicts expected by build_prompt
+    top_chunks = [
+        {
+            "source": c.document_id,
+            "page": getattr(c, "page", "N/A"),
+            "section": getattr(c, "section", "N/A"),
+            "text": c.text,
+        }
+        for c in reranked[:3]  # use top-3 reranked chunks
+    ]
+    prompt = build_prompt(query, top_chunks)
+    print("Prompt built successfully.")
+
+    answer = generate_answer(prompt)
+    print(f"\nGenerated Answer:\n{answer}")
+
     print("\nAll pipeline components verified successfully!")
 
 if __name__ == "__main__":

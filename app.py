@@ -5,6 +5,8 @@ from ingestion.chunk import chunk_text
 from ingestion.embed import get_embeddings
 from models.reranker import rerank
 from models.chunk import Chunk
+from generation.prompt_builder import build_prompt
+from generation.llm import generate_answer
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -121,25 +123,36 @@ def search():
 
     reranked_results = rerank(query, retrieved_chunks)
 
-    print("\nResults\n")
-
-    # Display the top 5 reranked results
+    # ── Display top-5 reranked context chunks ──────────────────────────────
+    print("\nTop Reranked Chunks\n")
     for chunk in reranked_results[:5]:
-
         print("=" * 80)
-
-        print(
-            f"Score: {chunk.score:.4f}"
-        )
+        print(f"Score: {chunk.score:.4f}")
         print(f"Doc: {chunk.document_id} | Page: {chunk.page} | Section: {chunk.section} | Tokens: {chunk.token_count}")
-
+        print()
+        print(chunk.text)
         print()
 
-        print(
-            chunk.text
-        )
+    # ── Generation ─────────────────────────────────────────────────────────
+    top_chunks = [
+        {
+            "source": c.document_id,
+            "page": c.page,
+            "section": c.section,
+            "text": c.text,
+        }
+        for c in reranked_results[:3]  # feed top-3 chunks to the LLM
+    ]
 
-        print()
+    prompt = build_prompt(query, top_chunks)
+    print("Generating answer...\n")
+    answer = generate_answer(prompt)
+
+    print("=" * 80)
+    print("Answer")
+    print("=" * 80)
+    print(answer)
+    print()
 
 
 def main_menu():
@@ -148,8 +161,8 @@ def main_menu():
     print("       RAG Pipeline — What do you want to do?")
     print("=" * 50)
     print("  [1] Ingest document  (embed & store in Qdrant)")
-    print("  [2] Search only      (query already-stored data)")
-    print("  [3] Ingest then search")
+    print("  [2] Search & Generate (query + LLM answer)")
+    print("  [3] Ingest then Search & Generate")
     print("  [q] Quit")
     print("=" * 50)
 
@@ -183,4 +196,4 @@ if __name__ == "__main__":
         print("Bye!")
 
     else:
-        print("Invalid choice. Please restart and pick 1, 2, 3, or q.")
+        print("Invalid choice. Please restart and pick 1, 2, 3, or q.")
