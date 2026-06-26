@@ -2,7 +2,8 @@ from sentence_transformers import SentenceTransformer
 
 print("Step 1: Loading model")
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# BAAI/bge-large-en-v1.5 — 1024-dim, production-grade, top MTEB rankings
+model = SentenceTransformer("BAAI/bge-large-en-v1.5")
 
 print("Step 2: Model loaded")
 

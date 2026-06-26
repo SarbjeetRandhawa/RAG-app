@@ -1,8 +1,10 @@
+import uuid
 from ingestion.extract import extract_text
 from ingestion.clean import clean_text
 from ingestion.chunk import chunk_text
 from ingestion.embed import get_embeddings
 from models.reranker import rerank
+from models.chunk import Chunk
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -13,7 +15,7 @@ from qdrant_client.models import (
 
 PDF_PATH = "data/data.pdf"
 
-COLLECTION_NAME = "documents_v3"
+COLLECTION_NAME = "documents_v4"  # v4: switched to BAAI/bge-large-en-v1.5 (1024-dim)
 
 
 client = QdrantClient(
@@ -37,7 +39,7 @@ def create_collection():
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=VectorParams(
-            size=384,
+            size=1024,           # BAAI/bge-large-en-v1.5 output dimension
             distance=Distance.COSINE
         )
     )
@@ -51,23 +53,28 @@ def ingest_document():
 
     chunks_data = chunk_text(pages_data)
 
-    embeddings = get_embeddings([chunk["text"] for chunk in chunks_data])
+    embeddings = get_embeddings([chunk.text for chunk in chunks_data])
 
     points = []
 
     for index, (chunk, embedding) in enumerate(
         zip(chunks_data, embeddings)
     ):
+        point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, chunk.chunk_id))
 
         points.append(
             PointStruct(
-                id=index,
+                id=point_id,
                 vector=embedding,
                 payload={
-                    "text": chunk["text"],
-                    "page": chunk["page"],
-                    "section": chunk["section"],
-                    "source": chunk["source"]
+                    "chunk_id": chunk.chunk_id,
+                    "document_id": chunk.document_id,
+                    "text": chunk.text,
+                    "page": chunk.page,
+                    "section": chunk.section,
+                    "source": chunk.source,
+                    "chunk_index": chunk.chunk_index,
+                    "token_count": chunk.token_count
                 }
             )
         )
@@ -96,44 +103,84 @@ def search():
         limit=20
     )
 
-    # print("\nQdrant Results Before Reranking\n")
+    retrieved_chunks = []
+    for hit in results.points:
+        payload = hit.payload
+        retrieved_chunks.append(
+            Chunk(
+                chunk_id=payload["chunk_id"],
+                document_id=payload["document_id"],
+                page=payload["page"],
+                section=payload["section"],
+                source=payload["source"],
+                chunk_index=payload["chunk_index"],
+                token_count=payload.get("token_count", 0),
+                text=payload["text"]
+            )
+        )
 
-    # for i, hit in enumerate(results.points[:10]):
-    #     print("=" * 80)
-    #     print(f"Rank: {i+1}")
-    #     print(f"Qdrant Score: {hit.score:.4f}")
-    #     print(hit.payload["text"][:200])
-    #     print()
-
-    chunks = [hit.payload["text"] for hit in results.points]
-
-    reranked_results = rerank(query, chunks)
+    reranked_results = rerank(query, retrieved_chunks)
 
     print("\nResults\n")
 
     # Display the top 5 reranked results
-    for res in reranked_results[:5]:
+    for chunk in reranked_results[:5]:
 
         print("=" * 80)
 
         print(
-            f"Score: {res['score']:.4f}"
+            f"Score: {chunk.score:.4f}"
         )
+        print(f"Doc: {chunk.document_id} | Page: {chunk.page} | Section: {chunk.section} | Tokens: {chunk.token_count}")
 
         print()
 
         print(
-            res["text"]
+            chunk.text
         )
 
         print()
+
+
+def main_menu():
+
+    print("\n" + "=" * 50)
+    print("       RAG Pipeline — What do you want to do?")
+    print("=" * 50)
+    print("  [1] Ingest document  (embed & store in Qdrant)")
+    print("  [2] Search only      (query already-stored data)")
+    print("  [3] Ingest then search")
+    print("  [q] Quit")
+    print("=" * 50)
+
+    choice = input("Enter choice: ").strip().lower()
+
+    return choice
 
 
 if __name__ == "__main__":
 
     create_collection()
 
-    ingest_document()
+    choice = main_menu()
 
-    while True:
-        search()
+    if choice == "1":
+        ingest_document()
+        print("\nIngestion complete. Restart the app to search.")
+
+    elif choice == "2":
+        print("\nSkipping ingestion — using existing Qdrant data.\n")
+        while True:
+            search()
+
+    elif choice == "3":
+        ingest_document()
+        print("\nIngestion complete. Starting search...\n")
+        while True:
+            search()
+
+    elif choice == "q":
+        print("Bye!")
+
+    else:
+        print("Invalid choice. Please restart and pick 1, 2, 3, or q.")
