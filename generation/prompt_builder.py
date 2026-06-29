@@ -1,27 +1,16 @@
-def build_prompt(query, chunks):
-    context = "\n\n".join(
-        [
-            f"""Source: {c['source']}
-Page: {c['page']}
-Section: {c['section']}
+class PromptBuilder:
+    def build(self, query, chunks):
+        context = "\n\n".join(
+            f"""Source: {chunk.source}
+Page: {chunk.page}
+Section: {chunk.section}
 
-{c['text']}
+{chunk.text}
 """
-            for c in chunks
-        ]
-    )
+            for chunk in chunks
+        )
 
-    prompt = f"""
-You are a helpful AI assistant.
-
-Answer ONLY using the provided context.
-
-If the answer cannot be found in the context, say:
-
-"I couldn't find that information in the provided documents."
-
---------------------
-
+        prompt = f"""
 Context:
 
 {context}
@@ -35,4 +24,4 @@ Question:
 Answer:
 """
 
-    return prompt
+        return prompt

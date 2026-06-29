@@ -1,12 +1,16 @@
 import uuid
+import logging
+import time
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 from ingestion.extract import extract_text
 from ingestion.clean import clean_text
 from ingestion.chunk import chunk_text
 from ingestion.embed import get_embeddings
 from models.reranker import rerank
-from models.chunk import Chunk
-from generation.prompt_builder import build_prompt
-from generation.llm import generate_answer
+from models.chunk import Chunk, RetrievedChunk
+from retrieval.retriever import RetrieverService
+from generation.generator import GenerationService
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -17,7 +21,8 @@ from qdrant_client.models import (
 
 PDF_PATH = "data/data.pdf"
 
-COLLECTION_NAME = "documents_v4"  # v4: switched to BAAI/bge-large-en-v1.5 (1024-dim)
+COLLECTION_NAME = "documents_v1"  # v4: switched to BAAI/bge-large-en-v1.5 (1024-dim)
+MAX_CONTEXT_TOKENS = 6000
 
 
 client = QdrantClient(
@@ -86,7 +91,7 @@ def ingest_document():
         points=points
     )
 
-    print(
+    logging.info(
         f"Inserted {len(points)} chunks"
     )
 
@@ -97,62 +102,34 @@ def search():
         "\nAsk a question: "
     )
 
-    query_embedding = get_embeddings([query])[0]
+    total_start = time.time()
 
-    results = client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_embedding,
-        limit=20
-    )
+    retriever = RetrieverService(client, COLLECTION_NAME)
+    reranked_results = retriever.retrieve(query)
 
-    retrieved_chunks = []
-    for hit in results.points:
-        payload = hit.payload
-        retrieved_chunks.append(
-            Chunk(
-                chunk_id=payload["chunk_id"],
-                document_id=payload["document_id"],
-                page=payload["page"],
-                section=payload["section"],
-                source=payload["source"],
-                chunk_index=payload["chunk_index"],
-                token_count=payload.get("token_count", 0),
-                text=payload["text"]
-            )
-        )
+    logging.info("\nTop Reranked Chunks\n")
+    for rc in reranked_results[:5]:
+        logging.info("=" * 80)
+        logging.info(f"Vector Score: {rc.vector_score:.4f} | Rerank Score: {rc.rerank_score:.4f}")
+        logging.info(f"Doc: {rc.chunk.document_id} | Page: {rc.chunk.page} | Section: {rc.chunk.section} | Tokens: {rc.chunk.token_count}")
+        logging.info("\n" + rc.chunk.text + "\n")
 
-    reranked_results = rerank(query, retrieved_chunks)
-
-    # ── Display top-5 reranked context chunks ──────────────────────────────
-    print("\nTop Reranked Chunks\n")
-    for chunk in reranked_results[:5]:
-        print("=" * 80)
-        print(f"Score: {chunk.score:.4f}")
-        print(f"Doc: {chunk.document_id} | Page: {chunk.page} | Section: {chunk.section} | Tokens: {chunk.token_count}")
-        print()
-        print(chunk.text)
-        print()
-
-    # ── Generation ─────────────────────────────────────────────────────────
-    top_chunks = [
-        {
-            "source": c.document_id,
-            "page": c.page,
-            "section": c.section,
-            "text": c.text,
-        }
-        for c in reranked_results[:3]  # feed top-3 chunks to the LLM
-    ]
-
-    prompt = build_prompt(query, top_chunks)
-    print("Generating answer...\n")
-    answer = generate_answer(prompt)
+    generator = GenerationService(MAX_CONTEXT_TOKENS)
+    answer = generator.generate(query, reranked_results)
+    
+    total_time = time.time() - total_start
 
     print("=" * 80)
     print("Answer")
     print("=" * 80)
     print(answer)
     print()
+
+    logging.info("=" * 80)
+    logging.info("Total Timing Metrics")
+    logging.info("=" * 80)
+    logging.info(f"Total Time         : {total_time:.4f} s")
+    logging.info("=" * 80)
 
 
 def main_menu():
@@ -179,21 +156,21 @@ if __name__ == "__main__":
 
     if choice == "1":
         ingest_document()
-        print("\nIngestion complete. Restart the app to search.")
+        logging.info("\nIngestion complete. Restart the app to search.")
 
     elif choice == "2":
-        print("\nSkipping ingestion — using existing Qdrant data.\n")
+        logging.info("\nSkipping ingestion — using existing Qdrant data.\n")
         while True:
             search()
 
     elif choice == "3":
         ingest_document()
-        print("\nIngestion complete. Starting search...\n")
+        logging.info("\nIngestion complete. Starting search...\n")
         while True:
             search()
 
     elif choice == "q":
-        print("Bye!")
+        logging.info("Bye!")
 
     else:
-        print("Invalid choice. Please restart and pick 1, 2, 3, or q.")
+        logging.warning("Invalid choice. Please restart and pick 1, 2, 3, or q.")

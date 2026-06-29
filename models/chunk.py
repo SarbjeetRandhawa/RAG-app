@@ -11,3 +11,9 @@ class Chunk:
     token_count: int
     text: str
     score: float = 0.0
+
+@dataclass
+class RetrievedChunk:
+    chunk: Chunk
+    vector_score: float
+    rerank_score: float
