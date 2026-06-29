@@ -1,0 +1,94 @@
+# =============================================================
+# ROOT .gitignore — RAG Learning Project
+# Covers both frontend/ and backend/ subdirectories
+# =============================================================
+
+# ---------------------------------------------------------------
+# BACKEND — Python
+# ---------------------------------------------------------------
+
+# Virtual environment
+backend/Venv/
+backend/venv/
+backend/.venv/
+backend/env/
+
+# Byte-compiled / optimized files
+backend/__pycache__/
+backend/**/__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment secrets (NEVER commit API keys)
+backend/.env
+.env
+*.env
+
+# Uploaded / ingested data files
+backend/data/
+
+# Vector store local storage
+backend/vectorstore/
+backend/qdrant_storage/
+
+# Test artifacts
+backend/test_pipeline.py
+
+# Logs
+*.log
+
+# ---------------------------------------------------------------
+# FRONTEND — Node / Vite / React
+# ---------------------------------------------------------------
+
+# Dependencies (can be restored with npm install)
+frontend/node_modules/
+
+# Build output (can be regenerated with npm run build)
+frontend/dist/
+frontend/dist-ssr/
+
+# Local env overrides
+frontend/*.local
+
+# Vite / npm debug logs
+frontend/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------------------------------------------------------------
+# EDITORS & OS
+# ---------------------------------------------------------------
+
+# VS Code (keep extensions.json if desired)
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# macOS
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Swap / temp files
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Jupyter
+.ipynb_checkpoints/

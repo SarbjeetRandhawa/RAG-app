@@ -11,6 +11,8 @@ from models.reranker import rerank
 from models.chunk import Chunk, RetrievedChunk
 from retrieval.retriever import RetrieverService
 from generation.generator import GenerationService
+from pipeline.runner import run_chat_pipeline
+
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -52,13 +54,18 @@ def create_collection():
     )
 
 
-def ingest_document():
+def ingest_document(pdf_path=PDF_PATH, document_id="data", filename="data.pdf"):
 
-    pages_data = extract_text(PDF_PATH)
+    pages_data = extract_text(pdf_path)
 
     pages_data = clean_text(pages_data)
 
     chunks_data = chunk_text(pages_data)
+
+    for chunk in chunks_data:
+        chunk.document_id = document_id
+        chunk.source = filename
+        chunk.chunk_id = f"{document_id}_{chunk.chunk_index}"
 
     embeddings = get_embeddings([chunk.text for chunk in chunks_data])
 
@@ -94,6 +101,7 @@ def ingest_document():
     logging.info(
         f"Inserted {len(points)} chunks"
     )
+    return chunks_data
 
 
 def search():
@@ -102,34 +110,27 @@ def search():
         "\nAsk a question: "
     )
 
-    total_start = time.time()
-
-    retriever = RetrieverService(client, COLLECTION_NAME)
-    reranked_results = retriever.retrieve(query)
+    result = run_chat_pipeline(query, client, COLLECTION_NAME, MAX_CONTEXT_TOKENS)
 
     logging.info("\nTop Reranked Chunks\n")
-    for rc in reranked_results[:5]:
+    for rc in result["reranked_results"][:5]:
         logging.info("=" * 80)
         logging.info(f"Vector Score: {rc.vector_score:.4f} | Rerank Score: {rc.rerank_score:.4f}")
         logging.info(f"Doc: {rc.chunk.document_id} | Page: {rc.chunk.page} | Section: {rc.chunk.section} | Tokens: {rc.chunk.token_count}")
         logging.info("\n" + rc.chunk.text + "\n")
 
-    generator = GenerationService(MAX_CONTEXT_TOKENS)
-    answer = generator.generate(query, reranked_results)
-    
-    total_time = time.time() - total_start
-
     print("=" * 80)
     print("Answer")
     print("=" * 80)
-    print(answer)
+    print(result["answer"])
     print()
 
     logging.info("=" * 80)
     logging.info("Total Timing Metrics")
     logging.info("=" * 80)
-    logging.info(f"Total Time         : {total_time:.4f} s")
+    logging.info(f"Total Time         : {result['total_time']:.4f} s")
     logging.info("=" * 80)
+
 
 
 def main_menu():

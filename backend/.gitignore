@@ -1,19 +1,37 @@
+# =============================================================
+# BACKEND .gitignore
+# =============================================================
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Environments
-.env
-.venv
-env/
+# Virtual environments
+Venv/
 venv/
+.venv/
+env/
 ENV/
 env.bak/
 venv.bak/
 
+# Environment secrets — NEVER commit API keys
+.env
+*.env
+
+# Ingested / uploaded data files
+data/
+
+# Vector store local storage
+vectorstore/
+qdrant_storage/
+
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log
 
 # IDEs
 .vscode/
@@ -29,9 +47,3 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# Qdrant local storage (if any)
-qdrant_storage/
-
-# Project specific (optional, uncomment if needed)
-# data/*.pdf

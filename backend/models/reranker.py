@@ -1,25 +1,32 @@
 # reranker.py
 
-from sentence_transformers import CrossEncoder
+import os
+import cohere
+from dotenv import load_dotenv
 from models.chunk import RetrievedChunk
 
-reranker_model = CrossEncoder(
-    "BAAI/bge-reranker-base"
-)
+load_dotenv()
+
+co = cohere.Client(os.environ.get("COHERE_API_KEY"))
 
 def rerank(query: str, retrieved_chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
     if not retrieved_chunks:
         return []
 
-    pairs = [[query, rc.chunk.text] for rc in retrieved_chunks]
+    docs = [rc.chunk.text for rc in retrieved_chunks]
 
-    scores = reranker_model.predict(pairs)
+    response = co.rerank(
+        model='rerank-english-v3.0',
+        query=query,
+        documents=docs,
+        top_n=len(docs)
+    )
 
-    for rc, score in zip(retrieved_chunks, scores):
-        rc.rerank_score = float(score)
+    reranked_chunks = []
+    for result in response.results:
+        rc = retrieved_chunks[result.index]
+        rc.rerank_score = float(result.relevance_score)
+        reranked_chunks.append(rc)
 
-    return sorted(
-        retrieved_chunks,
-        key=lambda x: x.rerank_score,
-        reverse=True
-    )
+    return reranked_chunks
+

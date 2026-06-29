@@ -1,5 +1,10 @@
 qdrant-client
-sentence-transformers
+cohere
 pymupdf
 python-dotenv
 openai
+fastapi
+uvicorn
+pydantic
+python-multipart
+langchain-text-splitters

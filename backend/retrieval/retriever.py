@@ -10,9 +10,9 @@ class RetrieverService:
         self.client = client
         self.collection_name = collection_name
 
-    def retrieve(self, query: str, top_k: int = 8) -> list[RetrievedChunk]:
+    def retrieve(self, query: str, top_k: int = 20) -> list[RetrievedChunk]:
         embed_start = time.time()
-        query_embedding = get_embeddings([query])[0]
+        query_embedding = get_embeddings([query], input_type="search_query")[0]
         embed_time = time.time() - embed_start
 
         qdrant_start = time.time()

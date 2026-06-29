@@ -1,23 +1,25 @@
 import logging
-from sentence_transformers import SentenceTransformer
+import os
+import cohere
+from dotenv import load_dotenv
 
-logging.info("Step 1: Loading model")
+load_dotenv()
 
-# BAAI/bge-large-en-v1.5 — 1024-dim, production-grade, top MTEB rankings
-model = SentenceTransformer("BAAI/bge-large-en-v1.5")
+logging.info("Step 1: Loading Cohere model")
 
-logging.info("Step 2: Model loaded")
+# Cohere embed-english-v3.0 is 1024-dim, similar to previous BGE
+co = cohere.Client(os.environ.get("COHERE_API_KEY"))
 
+logging.info("Step 2: Cohere client loaded")
 
-def get_embeddings(chunks):
+def get_embeddings(chunks, input_type="search_document"):
 
-    logging.info(f"Creating embeddings for {len(chunks)} chunks")
+    logging.info(f"Creating embeddings for {len(chunks)} chunks using Cohere")
 
-    return model.encode(
-        chunks,
-        batch_size=32,
-        normalize_embeddings=True,
-        show_progress_bar=True
-    ).tolist()
-
+    response = co.embed(
+        texts=chunks,
+        model='embed-english-v3.0',
+        input_type=input_type
+    )
+    return response.embeddings
 
