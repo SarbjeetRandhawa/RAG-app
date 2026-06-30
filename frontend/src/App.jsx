@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchDocuments, chatQuery, checkHealth, deleteDocument } from './services/api';
+import { fetchDocuments, chatQuery, checkHealth, deleteDocument, fetchAnalytics } from './services/api';
 
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -11,6 +11,7 @@ import SettingsView from './components/SettingsView';
 export default function App() {
   // Views Routing
   const [activeView, setActiveView] = useState('chat');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // RAG collections state
   const [collections, setCollections] = useState([
@@ -46,10 +47,12 @@ export default function App() {
 
   // Ingested Documents List
   const [documents, setDocuments] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState(null);
 
   useEffect(() => {
     checkHealth().then(setBackendConnected);
     fetchDocuments().then(setDocuments).catch(console.error);
+    fetchAnalytics().then(setAnalyticsData).catch(console.error);
   }, []);
 
   // Chat Conversations State
@@ -278,11 +281,22 @@ Vector embeddings are generated using the selected Embedding model and uploaded 
       {/* Sidebar navigation */}
       <Sidebar 
         activeView={activeView}
-        setActiveView={setActiveView}
+        setActiveView={(v) => {
+          setActiveView(v);
+          setMobileMenuOpen(false);
+        }}
         chatHistory={chatHistory}
         activeChatId={activeChatId}
-        setActiveChatId={setActiveChatId}
-        onNewChat={handleNewChat}
+        setActiveChatId={(id) => {
+          setActiveChatId(id);
+          setMobileMenuOpen(false);
+        }}
+        onNewChat={() => {
+          handleNewChat();
+          setMobileMenuOpen(false);
+        }}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
       />
 
       {/* Main Container */}
@@ -300,10 +314,11 @@ Vector embeddings are generated using the selected Embedding model and uploaded 
           selectedLlmModel={selectedLlmModel}
           setSelectedLlmModel={setSelectedLlmModel}
           backendConnected={backendConnected}
+          setMobileMenuOpen={setMobileMenuOpen}
         />
 
         {/* View Router */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto min-h-0">
           {activeView === 'chat' && (
             <ChatView 
               messages={conversations[activeChatId] || []}
@@ -326,6 +341,7 @@ Vector embeddings are generated using the selected Embedding model and uploaded 
           {activeView === 'analytics' && (
             <AnalyticsView 
               documents={documents}
+              analyticsData={analyticsData}
             />
           )}
 

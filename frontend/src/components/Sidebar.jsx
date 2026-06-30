@@ -22,7 +22,9 @@ export default function Sidebar({
   chatHistory, 
   activeChatId, 
   setActiveChatId, 
-  onNewChat 
+  onNewChat,
+  mobileMenuOpen,
+  setMobileMenuOpen
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -38,7 +40,18 @@ export default function Sidebar({
   );
 
   return (
-    <aside className="w-64 border-r border-slate-200 bg-white flex flex-col h-full select-none">
+    <>
+      {/* Mobile Overlay Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden animate-in fade-in"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-200 bg-white flex flex-col h-full select-none transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+        mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+      }`}>
       {/* Brand logo & title */}
       <div className="p-4 border-b border-slate-100 flex items-center space-x-2.5">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-400 flex items-center justify-center text-white shadow-premium">
@@ -162,5 +175,6 @@ export default function Sidebar({
         </div>
       </div>
     </aside>
+    </>
   );
 }

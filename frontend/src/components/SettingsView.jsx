@@ -66,7 +66,7 @@ export default function SettingsView({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-slate-50 space-y-8 select-none">
+    <div className="flex-1 p-8 bg-slate-50 space-y-8 select-none">
       
       {/* Page Title */}
       <div className="flex items-center justify-between">

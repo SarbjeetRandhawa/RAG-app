@@ -93,7 +93,7 @@ export default function DocUploadView({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-slate-50 space-y-8 select-none">
+    <div className="flex-1 p-8 bg-slate-50 space-y-8 select-none">
       
       {/* View Title */}
       <div className="flex flex-col space-y-1">
@@ -174,7 +174,7 @@ export default function DocUploadView({
               </div>
 
               {/* Multi-stage state checklist */}
-              <div className="grid grid-cols-4 gap-2 pt-2 select-none text-center">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 select-none text-center">
                 {[
                   { stage: 'ocr', label: 'OCR & Parsing', desc: 'Layout analysis' },
                   { stage: 'chunking', label: 'Chunk Splitting', desc: 'Recursive tokens' },

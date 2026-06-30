@@ -60,6 +60,22 @@ def save_manifest(manifest: list):
     with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
 
+ANALYTICS_PATH = os.path.join("data", "analytics.json")
+
+def load_analytics() -> dict:
+    if not os.path.exists(ANALYTICS_PATH):
+        return {"queries": [], "daily_stats": {}}
+    try:
+        with open(ANALYTICS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"queries": [], "daily_stats": {}}
+
+def save_analytics(data: dict):
+    os.makedirs(os.path.dirname(ANALYTICS_PATH), exist_ok=True)
+    with open(ANALYTICS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
 # Pydantic models
 class ChatRequest(BaseModel):
     query: str
@@ -164,6 +180,76 @@ def delete_document(document_id: str):
         logging.error(f"Deletion failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+from collections import Counter
+from datetime import datetime, timedelta
+
+@app.get("/api/analytics")
+def get_analytics():
+    manifest = load_manifest()
+    total_docs = len(manifest)
+    total_chunks = sum(doc.get("chunks", 0) for doc in manifest)
+    
+    analytics = load_analytics()
+    
+    # Process queries to find top queries
+    queries = analytics.get("queries", [])
+    query_texts = [q["query"] for q in queries]
+    counter = Counter(query_texts)
+    top_queries_data = []
+    
+    for q_text, count in counter.most_common(5):
+        # find average latency and confidence for this query
+        q_instances = [q for q in queries if q["query"] == q_text]
+        avg_conf = sum(q.get("confidence", 0) for q in q_instances) / len(q_instances) if q_instances else 0
+        avg_lat = sum(q.get("latency_sec", 0.0) for q in q_instances) / len(q_instances) if q_instances else 0.0
+        top_queries_data.append({
+            "query": q_text,
+            "count": count,
+            "confidence": round(avg_conf),
+            "latency": f"{avg_lat*1000:.0f}ms"
+        })
+
+    # Prepare daily stats (last 7 days)
+    daily_stats = analytics.get("daily_stats", {})
+    latency_data = []
+    query_volume = []
+    
+    today = datetime.now()
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        d_str = d.strftime("%m-%d")
+        
+        stat = daily_stats.get(d_str, {"count": 0, "total_embed_ms": 0, "total_llm_ms": 0})
+        count = stat["count"]
+        avg_embed = (stat["total_embed_ms"] / count) if count > 0 else 0
+        avg_llm = (stat["total_llm_ms"] / count) if count > 0 else 0
+        
+        latency_data.append({
+            "label": d.strftime("%a"),
+            "embed": round(avg_embed),
+            "llm": round(avg_llm)
+        })
+        query_volume.append({
+            "date": d_str,
+            "queries": count
+        })
+
+    avg_retrieval_latency = f"{sum(d['embed'] for d in latency_data) / max(1, sum(1 for d in latency_data if d['embed']>0)):.0f} ms"
+    avg_llm_time = f"{sum(d['llm'] for d in latency_data) / max(1, sum(1 for d in latency_data if d['llm']>0)):.0f} ms"
+
+    return {
+        "stats": [
+            {"id": "docs", "label": "Indexed Documents", "value": total_docs, "change": "+0% this week", "changeType": "up"},
+            {"id": "chunks", "label": "Knowledge Chunks", "value": total_chunks, "change": "+0% this week", "changeType": "up"},
+            {"id": "vectors", "label": "Embedded Vectors", "value": total_chunks, "change": "+0% this week", "changeType": "up"},
+            {"id": "retrieval", "label": "Avg Retrieval Latency", "value": avg_retrieval_latency, "change": "live", "changeType": "down"},
+            {"id": "llm", "label": "Avg LLM Time", "value": avg_llm_time, "change": "live", "changeType": "down"}
+        ],
+        "topQueries": top_queries_data,
+        "latencyData": latency_data,
+        "queryVolume": query_volume
+    }
+
 @app.post("/api/chat")
 def chat_query(req: ChatRequest):
     try:
@@ -175,6 +261,35 @@ def chat_query(req: ChatRequest):
             model=req.model or "gpt-4.1"
         )
         
+        # Log to analytics
+        try:
+            analytics = load_analytics()
+            today_str = datetime.now().strftime("%m-%d")
+            if today_str not in analytics["daily_stats"]:
+                analytics["daily_stats"][today_str] = {"count": 0, "total_embed_ms": 0, "total_llm_ms": 0}
+            
+            # parse out latencies
+            pipe_data = result.get("pipeline_data", {})
+            embed_lat = float(pipe_data.get("embedding", {}).get("latency", "0").replace("ms", "")) if "embedding" in pipe_data else 0.0
+            llm_lat = float(pipe_data.get("llm", {}).get("latency", "0").replace("ms", "")) if "llm" in pipe_data else 0.0
+            
+            total_time_str = result.get("stats", {}).get("latency", "0s").replace("s", "")
+            total_time_sec = float(total_time_str)
+            
+            analytics["daily_stats"][today_str]["count"] += 1
+            analytics["daily_stats"][today_str]["total_embed_ms"] += embed_lat
+            analytics["daily_stats"][today_str]["total_llm_ms"] += llm_lat
+            
+            analytics.setdefault("queries", []).append({
+                "query": req.query,
+                "confidence": result.get("stats", {}).get("confidence", 0),
+                "latency_sec": total_time_sec,
+                "timestamp": time.time()
+            })
+            save_analytics(analytics)
+        except Exception as log_e:
+            logging.error(f"Failed to log analytics: {log_e}")
+
         return {
             "answer": result["answer"],
             "citations": result["citations"],

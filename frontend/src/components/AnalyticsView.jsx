@@ -13,54 +13,39 @@ import {
   Award
 } from 'lucide-react';
 
-export default function AnalyticsView({ documents }) {
+export default function AnalyticsView({ documents, analyticsData }) {
   const [hoveredBar, setHoveredBar] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
-  // Compute stats based on loaded docs
-  const totalDocs = documents.length;
-  const totalChunks = documents.reduce((acc, doc) => acc + (doc.chunks || 0), 0);
-  const totalVectors = totalChunks;
+  // If data isn't loaded yet, show a loading placeholder or empty state
+  if (!analyticsData) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center text-slate-400">
+          <Activity className="w-8 h-8 animate-pulse mb-3" />
+          <span>Loading analytics engine...</span>
+        </div>
+      </div>
+    );
+  }
 
-  // Mock analytics history
-  const latencyData = [
-    { label: 'Mon', embed: 120, llm: 850 },
-    { label: 'Tue', embed: 110, llm: 780 },
-    { label: 'Wed', embed: 140, llm: 920 },
-    { label: 'Thu', embed: 95, llm: 680 },
-    { label: 'Fri', embed: 125, llm: 840 },
-    { label: 'Sat', embed: 80, llm: 510 },
-    { label: 'Sun', embed: 90, llm: 620 }
-  ];
+  const { topQueries, latencyData, queryVolume } = analyticsData;
+  
+  const iconMap = {
+    docs: FileText,
+    chunks: Database,
+    vectors: Cpu,
+    retrieval: Clock,
+    llm: Zap
+  };
 
-  const queryVolume = [
-    { date: '06-23', queries: 240 },
-    { date: '06-24', queries: 320 },
-    { date: '06-25', queries: 480 },
-    { date: '06-26', queries: 510 },
-    { date: '06-27', queries: 450 },
-    { date: '06-28', queries: 630 },
-    { date: '06-29', queries: 720 }
-  ];
-
-  const stats = [
-    { id: 'docs', label: 'Indexed Documents', value: totalDocs, icon: FileText, change: '+12% this week', changeType: 'up' },
-    { id: 'chunks', label: 'Knowledge Chunks', value: totalChunks, icon: Database, change: '+8% this week', changeType: 'up' },
-    { id: 'vectors', label: 'Embedded Vectors', value: totalVectors, icon: Cpu, change: '+8% this week', changeType: 'up' },
-    { id: 'retrieval', label: 'Avg Retrieval Latency', value: '115 ms', icon: Clock, change: '-12 ms optimizer', changeType: 'down' },
-    { id: 'llm', label: 'Avg LLM Time', value: '780 ms', icon: Zap, change: '-45 ms caching', changeType: 'down' }
-  ];
-
-  const topQueries = [
-    { query: 'Calculate quarterly growth rates Q4', count: 145, confidence: 94, latency: '890ms' },
-    { query: 'Vector database search embedding dimensions', count: 98, confidence: 91, latency: '720ms' },
-    { query: 'Chunk size and overlap optimization strategies', count: 86, confidence: 89, latency: '850ms' },
-    { query: 'System safety policy and guardrail overrides', count: 54, confidence: 97, latency: '690ms' },
-    { query: 'Reranker score thresholds and classification', count: 42, confidence: 85, latency: '910ms' }
-  ];
+  const stats = analyticsData.stats.map(s => ({
+    ...s,
+    icon: iconMap[s.id] || Activity
+  }));
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-slate-50 space-y-8 select-none">
+    <div className="flex-1 p-8 bg-slate-50 space-y-8 select-none">
       
       {/* Page Title */}
       <div className="flex items-center justify-between">
@@ -128,7 +113,7 @@ export default function AnalyticsView({ documents }) {
 
           {/* SVG Bar Chart */}
           <div className="relative h-64 flex-1">
-            <svg className="w-full h-full" viewBox="0 0 500 240">
+            <svg className="w-full h-full" viewBox="0 0 500 240" preserveAspectRatio="xMidYMid meet">
               {/* Grid Lines */}
               {[0, 60, 120, 180].map((y, idx) => (
                 <line 
@@ -223,13 +208,13 @@ export default function AnalyticsView({ documents }) {
               <p className="text-[11px] text-slate-400">Total processed search queries per day</p>
             </div>
             <div className="text-[11px] bg-slate-50 border px-2 py-0.5 rounded text-slate-500 font-bold">
-              Total: 3,350 queries
+              Total: {queryVolume.reduce((acc, q) => acc + q.queries, 0)} queries
             </div>
           </div>
 
           {/* SVG Line Chart */}
           <div className="relative h-64 flex-1">
-            <svg className="w-full h-full" viewBox="0 0 500 240">
+            <svg className="w-full h-full" viewBox="0 0 500 240" preserveAspectRatio="xMidYMid meet">
               {/* Grid Lines */}
               {[0, 60, 120, 180].map((y, idx) => (
                 <line 
@@ -245,10 +230,11 @@ export default function AnalyticsView({ documents }) {
 
               {/* Graph Line */}
               {(() => {
+                const maxQueries = Math.max(...queryVolume.map(q => q.queries), 10);
                 const points = queryVolume.map((q, i) => {
                   const x = 50 + i * 65;
-                  // Max height 180, Max value 800
-                  const y = 200 - (q.queries / 800) * 180;
+                  // Max height 180, scale based on maxQueries
+                  const y = 200 - (q.queries / maxQueries) * 180;
                   return { x, y };
                 });
 
@@ -338,7 +324,7 @@ export default function AnalyticsView({ documents }) {
               High Frequency Queries & Retrieve Accuracy
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">Confidence average: 91.2%</span>
+          <span className="text-[11px] text-slate-400 font-medium">Confidence average: {topQueries.length > 0 ? (topQueries.reduce((acc, q) => acc + q.confidence, 0) / topQueries.length).toFixed(1) : 0}%</span>
         </div>
 
         <div className="divide-y divide-slate-100 overflow-x-auto">

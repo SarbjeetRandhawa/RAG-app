@@ -6,6 +6,12 @@ export const fetchDocuments = async () => {
   return response.json();
 };
 
+export const fetchAnalytics = async () => {
+  const response = await fetch(`${BASE_URL}/analytics`);
+  if (!response.ok) throw new Error('Failed to fetch analytics');
+  return response.json();
+};
+
 export const uploadDocument = async (file, tags, author, collectionId) => {
   const formData = new FormData();
   formData.append('file', file);

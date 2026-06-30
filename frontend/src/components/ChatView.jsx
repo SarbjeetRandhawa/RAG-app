@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import MarkdownRenderer from './MarkdownRenderer';
 import { 
   Send, 
   Paperclip, 
@@ -147,9 +148,7 @@ export default function ChatView({
                         : 'bg-white text-slate-800 border border-slate-200 shadow-sm'
                     }`}>
                       {/* Markdown Text Body */}
-                      <div className="prose text-[13px] break-words whitespace-pre-line leading-relaxed">
-                        {m.content}
-                      </div>
+                      <MarkdownRenderer content={m.content} />
 
                       {/* AI citations & metadata */}
                       {m.role === 'assistant' && (
