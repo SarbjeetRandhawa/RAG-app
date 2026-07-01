@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from typing import Optional
+from models.graph import GraphDocument
 
 @dataclass
 class Chunk:
@@ -11,6 +13,11 @@ class Chunk:
     token_count: int
     text: str
     score: float = 0.0
+
+@dataclass
+class ProcessedChunk:
+    chunk: Chunk
+    graph_document: Optional[GraphDocument] = None
 
 @dataclass
 class RetrievedChunk:

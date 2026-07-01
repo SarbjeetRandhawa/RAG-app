@@ -62,18 +62,45 @@ def ingest_document(pdf_path=PDF_PATH, document_id="data", filename="data.pdf"):
 
     chunks_data = chunk_text(pages_data)
 
-    for chunk in chunks_data:
+    from ingestion.graph.extractor import GraphExtractor
+    from ingestion.graph.normalizer import GraphNormalizer
+    from ingestion.graph.resolver import EntityResolver
+    from models.chunk import ProcessedChunk
+
+    extractor = GraphExtractor()
+    normalizer = GraphNormalizer()
+    resolver = EntityResolver()
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def process_single_chunk(chunk):
         chunk.document_id = document_id
         chunk.source = filename
         chunk.chunk_id = f"{document_id}_{chunk.chunk_index}"
 
-    embeddings = get_embeddings([chunk.text for chunk in chunks_data])
+        # raw_graph, metadata = extractor.extract(chunk.text)
+        # graph_doc = normalizer.normalize(chunk.chunk_id, chunk.document_id, raw_graph, metadata)
+        # resolved_graph_doc = resolver.resolve(graph_doc)
+        # return ProcessedChunk(chunk=chunk, graph_document=resolved_graph_doc)
+        return ProcessedChunk(chunk=chunk)
+        
+
+    # logging.info(f"Processing {len(chunks_data)} chunks in parallel via Ollama...")
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        processed_chunks = list(executor.map(process_single_chunk, chunks_data))
+
+    # total_entities = sum(len(pc.graph_document.entities) for pc in processed_chunks if pc.graph_document)
+    # total_rels = sum(len(pc.graph_document.relationships) for pc in processed_chunks if pc.graph_document)
+    # logging.info(f"Graph extraction complete: {total_entities} entities, {total_rels} relationships across {len(processed_chunks)} chunks.")
+
+    embeddings = get_embeddings([pc.chunk.text for pc in processed_chunks])
 
     points = []
 
-    for index, (chunk, embedding) in enumerate(
-        zip(chunks_data, embeddings)
+    for index, (pc, embedding) in enumerate(
+        zip(processed_chunks, embeddings)
     ):
+        chunk = pc.chunk
         point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, chunk.chunk_id))
 
         points.append(
