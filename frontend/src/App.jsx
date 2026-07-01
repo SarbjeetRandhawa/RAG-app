@@ -9,6 +9,21 @@ import AnalyticsView from './components/AnalyticsView';
 import SettingsView from './components/SettingsView';
 
 export default function App() {
+  // Theme State
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
   // Views Routing
   const [activeView, setActiveView] = useState('chat');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -57,71 +72,13 @@ export default function App() {
 
   // Chat Conversations State
   const [chatHistory, setChatHistory] = useState([
-    { id: 'chat_1', title: 'Q4 Growth rates analysis' },
-    { id: 'chat_2', title: 'System Chunking overlap' }
+    { id: 'chat_1', title: 'New Chat Session' }
   ]);
   const [activeChatId, setActiveChatId] = useState('chat_1');
 
   // Message store (chatId -> array of messages)
   const [conversations, setConversations] = useState({
-    chat_1: [
-      { 
-        id: 'msg_1', 
-        role: 'user', 
-        content: 'What were the quarterly growth rates mentioned in the Q4 forecast?' 
-      },
-      { 
-        id: 'msg_2', 
-        role: 'assistant', 
-        content: `Based on the uploaded document **Q4_Growth_Forecasts.pdf** (Section 3.2, Page 12), the growth rates for the fiscal year are broken down as follows:
-
-*   **Q1 Growth**: 4.2% YoY (Year-over-Year), driven by subscription expansions.
-*   **Q2 Growth**: 5.8% YoY, boosted by enterprise service activations.
-*   **Q3 Growth**: 6.1% YoY, meeting target thresholds.
-*   **Q4 Projection**: Expected **7.2% YoY**, representing an accelerated run-rate.
-
-The aggregate compound annual growth rate (CAGR) is estimated at **5.82%** for the full year.`,
-        stats: { latency: '1.24s', confidence: 96, model: 'GPT-4.1 (Azure OpenAI)' },
-        citations: [
-          { 
-            fileName: 'Q4_Growth_Forecasts.pdf', 
-            page: 12, 
-            section: '3.2 Quarterly Growth Metrics', 
-            snippet: 'Q4 projection is slated at 7.2% YoY driven by enterprise service activations, outstripping the Q3 growth ceiling of 6.1%. Combined annual CAGR stands at 5.82%.', 
-            score: 0.96, 
-            chunkId: 104 
-          }
-        ]
-      }
-    ],
-    chat_2: [
-      {
-        id: 'msg_1',
-        role: 'user',
-        content: 'Explain the configured chunk size and overlap parameters.'
-      },
-      {
-        id: 'msg_2',
-        role: 'assistant',
-        content: `The RAG Ingestion pipeline uses a **Recursive Character Text Splitter** with the following system configuration:
-
-1.  **Chunk Size**: 1000 tokens. This segment length preserves semantic cohesion within paragraphs.
-2.  **Chunk Overlap**: 200 tokens. This 20% boundary overlap ensures context continuity between sequential blocks, avoiding cutoffs in cross-chunk facts.
-
-Vector embeddings are generated using the selected Embedding model and uploaded directly to the Qdrant database collection.`,
-        stats: { latency: '0.85s', confidence: 91, model: 'GPT-4.1 (Azure OpenAI)' },
-        citations: [
-          {
-            fileName: 'RAG_System_Architecture.md',
-            page: 3,
-            section: 'Chunk Splitting Scheme',
-            snippet: 'Our pipeline leverages a default chunk size of 1000 tokens coupled with an overlap threshold of 200 tokens. This keeps contextual parameters high during vector search matches.',
-            score: 0.93,
-            chunkId: 12
-          }
-        ]
-      }
-    ]
+    chat_1: []
   });
 
   const [isStreaming, setIsStreaming] = useState(false);
@@ -129,32 +86,7 @@ Vector embeddings are generated using the selected Embedding model and uploaded 
 
   // Initialize pipeline data for active trace
   useEffect(() => {
-    // Populate default initial trace details based on active chat
-    if (activeChatId === 'chat_1') {
-      setActivePipelineData({
-        query: { latency: '8ms', status: 'success', details: { rawQuery: 'What were the quarterly growth rates mentioned in the Q4 forecast?' } },
-        rewrite: { latency: '140ms', status: 'success', details: { rewritten: 'What are the YoY growth rates for Q1, Q2, Q3, and projected Q4 in the Q4 Forecasts PDF?' } },
-        embedding: { latency: '92ms', status: 'success', details: { model: selectedEmbeddingModel, dimensions: 1024 } },
-        vector: { latency: '35ms', status: 'success', details: { collection: 'Standard PDF Collection', hitsFound: 12 } },
-        rerank: { latency: '105ms', status: 'success', details: { model: rerankerModel, topMatchScore: 0.96 } },
-        prompt: { latency: '4ms', status: 'success', details: { contextLength: '2,400 tokens', systemPromptLength: '350 tokens' } },
-        llm: { latency: '820ms', status: 'success', details: { tokensPerSec: '54 t/s', model: selectedLlmModel } },
-        reflection: { latency: '190ms', status: 'success', details: { model: reflectionModel, selfCritiquePassed: true } },
-        final: { latency: '15ms', status: 'success', details: { citationCount: 1, confidenceScore: 0.96 } }
-      });
-    } else {
-      setActivePipelineData({
-        query: { latency: '10ms', status: 'success', details: { rawQuery: 'Explain the configured chunk size and overlap parameters.' } },
-        rewrite: { latency: '110ms', status: 'success', details: { rewritten: 'What is the token chunk size and chunk overlap parameter settings in the documentation?' } },
-        embedding: { latency: '75ms', status: 'success', details: { model: selectedEmbeddingModel, dimensions: 1024 } },
-        vector: { latency: '42ms', status: 'success', details: { collection: 'Standard PDF Collection', hitsFound: 6 } },
-        rerank: { latency: '80ms', status: 'success', details: { model: rerankerModel, topMatchScore: 0.93 } },
-        prompt: { latency: '3ms', status: 'success', details: { contextLength: '1,800 tokens', systemPromptLength: '350 tokens' } },
-        llm: { latency: '510ms', status: 'success', details: { tokensPerSec: '62 t/s', model: selectedLlmModel } },
-        reflection: { latency: '120ms', status: 'success', details: { model: reflectionModel, selfCritiquePassed: true } },
-        final: { latency: '10ms', status: 'success', details: { citationCount: 1, confidenceScore: 0.91 } }
-      });
-    }
+    setActivePipelineData(null);
   }, [activeChatId, selectedEmbeddingModel, selectedLlmModel, rerankerModel, reflectionModel]);
 
   // Create new session
@@ -211,23 +143,46 @@ Vector embeddings are generated using the selected Embedding model and uploaded 
     });
 
     try {
-      const response = await chatQuery(text, selectedLlmModel, selectedCollection);
+      let accumulatedContent = "";
+      const msgId = 'msg_ai_' + Date.now();
       
       const assistantMsg = {
-        id: 'msg_ai_' + Date.now(),
+        id: msgId,
         role: 'assistant',
-        content: response.answer,
-        stats: response.stats,
-        citations: response.citations
+        content: "",
       };
-
+      
       setConversations(prev => ({
         ...prev,
         [currentChatId]: [...(prev[currentChatId] || []), assistantMsg]
       }));
 
-      if (response.pipeline_data) {
-        setActivePipelineData(response.pipeline_data);
+      const finalResponse = await chatQuery(text, selectedLlmModel, selectedCollection, (chunk) => {
+        accumulatedContent += chunk;
+        setConversations(prev => {
+          const chatMsgs = prev[currentChatId] || [];
+          return {
+            ...prev,
+            [currentChatId]: chatMsgs.map(m => m.id === msgId ? { ...m, content: accumulatedContent } : m)
+          };
+        });
+      });
+      
+      setConversations(prev => {
+        const chatMsgs = prev[currentChatId] || [];
+        return {
+          ...prev,
+          [currentChatId]: chatMsgs.map(m => m.id === msgId ? { 
+            ...m, 
+            content: accumulatedContent,
+            stats: finalResponse.stats,
+            citations: finalResponse.citations
+          } : m)
+        };
+      });
+
+      if (finalResponse.pipeline_data) {
+        setActivePipelineData(finalResponse.pipeline_data);
       }
     } catch (err) {
       console.error(err);
@@ -276,7 +231,7 @@ Vector embeddings are generated using the selected Embedding model and uploaded 
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden font-sans transition-colors duration-200">
       
       {/* Sidebar navigation */}
       <Sidebar 
@@ -315,6 +270,8 @@ Vector embeddings are generated using the selected Embedding model and uploaded 
           setSelectedLlmModel={setSelectedLlmModel}
           backendConnected={backendConnected}
           setMobileMenuOpen={setMobileMenuOpen}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         />
 
         {/* View Router */}

@@ -22,7 +22,7 @@ _client = AzureOpenAI(
     api_version=os.environ["AZURE_OPENAI_API_VERSION"],
 )
 
-def generate_answer(prompt: str) -> str:
+def generate_answer(prompt: str):
     response = _client.chat.completions.create(
         model=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
         messages=[
@@ -35,6 +35,9 @@ def generate_answer(prompt: str) -> str:
                 "content": prompt,
             },
         ],
+        stream=True
     )
 
-    return response.choices[0].message.content
+    for chunk in response:
+        if len(chunk.choices) > 0 and chunk.choices[0].delta.content is not None:
+            yield chunk.choices[0].delta.content

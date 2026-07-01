@@ -8,6 +8,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 
@@ -252,53 +253,62 @@ def get_analytics():
 
 @app.post("/api/chat")
 def chat_query(req: ChatRequest):
-    try:
-        result = run_chat_pipeline(
-            query=req.query,
-            client=client,
-            collection_name=COLLECTION_NAME,
-            max_context_tokens=6000,
-            model=req.model or "gpt-4.1"
-        )
-        
-        # Log to analytics
+    def generate():
         try:
-            analytics = load_analytics()
-            today_str = datetime.now().strftime("%m-%d")
-            if today_str not in analytics["daily_stats"]:
-                analytics["daily_stats"][today_str] = {"count": 0, "total_embed_ms": 0, "total_llm_ms": 0}
+            result_gen = run_chat_pipeline(
+                query=req.query,
+                client=client,
+                collection_name=COLLECTION_NAME,
+                max_context_tokens=6000,
+                model=req.model or "gpt-4.1"
+            )
             
-            # parse out latencies
-            pipe_data = result.get("pipeline_data", {})
-            embed_lat = float(pipe_data.get("embedding", {}).get("latency", "0").replace("ms", "")) if "embedding" in pipe_data else 0.0
-            llm_lat = float(pipe_data.get("llm", {}).get("latency", "0").replace("ms", "")) if "llm" in pipe_data else 0.0
-            
-            total_time_str = result.get("stats", {}).get("latency", "0s").replace("s", "")
-            total_time_sec = float(total_time_str)
-            
-            analytics["daily_stats"][today_str]["count"] += 1
-            analytics["daily_stats"][today_str]["total_embed_ms"] += embed_lat
-            analytics["daily_stats"][today_str]["total_llm_ms"] += llm_lat
-            
-            analytics.setdefault("queries", []).append({
-                "query": req.query,
-                "confidence": result.get("stats", {}).get("confidence", 0),
-                "latency_sec": total_time_sec,
-                "timestamp": time.time()
-            })
-            save_analytics(analytics)
-        except Exception as log_e:
-            logging.error(f"Failed to log analytics: {log_e}")
+            for item in result_gen:
+                if isinstance(item, str):
+                    yield json.dumps({"type": "chunk", "text": item}) + "\n"
+                elif isinstance(item, dict):
+                    # Log to analytics
+                    try:
+                        analytics = load_analytics()
+                        today_str = datetime.now().strftime("%m-%d")
+                        if today_str not in analytics["daily_stats"]:
+                            analytics["daily_stats"][today_str] = {"count": 0, "total_embed_ms": 0, "total_llm_ms": 0}
+                        
+                        pipe_data = item.get("pipeline_data", {})
+                        embed_lat = float(pipe_data.get("embedding", {}).get("latency", "0").replace("ms", "")) if "embedding" in pipe_data else 0.0
+                        
+                        llm_lat_str = pipe_data.get("llm", {}).get("latency", "0s").replace("s", "")
+                        llm_lat = float(llm_lat_str) * 1000 if "llm" in pipe_data else 0.0
+                        
+                        total_time_str = item.get("stats", {}).get("latency", "0s").replace("s", "")
+                        total_time_sec = float(total_time_str)
+                        
+                        analytics["daily_stats"][today_str]["count"] += 1
+                        analytics["daily_stats"][today_str]["total_embed_ms"] += embed_lat
+                        analytics["daily_stats"][today_str]["total_llm_ms"] += llm_lat
+                        
+                        analytics.setdefault("queries", []).append({
+                            "query": req.query,
+                            "confidence": item.get("stats", {}).get("confidence", 0),
+                            "latency_sec": total_time_sec,
+                            "timestamp": time.time()
+                        })
+                        save_analytics(analytics)
+                    except Exception as log_e:
+                        logging.error(f"Failed to log analytics: {log_e}")
 
-        return {
-            "answer": result["answer"],
-            "citations": result["citations"],
-            "stats": result["stats"],
-            "pipeline_data": result["pipeline_data"]
-        }
-    except Exception as e:
-        logging.error(f"Chat execution failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+                    final_data = {
+                        "answer": item["answer"],
+                        "citations": item["citations"],
+                        "stats": item["stats"],
+                        "pipeline_data": item["pipeline_data"]
+                    }
+                    yield json.dumps({"type": "final", "data": final_data}) + "\n"
+        except Exception as e:
+            logging.error(f"Chat execution failed: {e}")
+            yield json.dumps({"type": "error", "error": str(e)}) + "\n"
+            
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 if __name__ == "__main__":
     import uvicorn

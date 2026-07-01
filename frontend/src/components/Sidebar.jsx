@@ -49,17 +49,17 @@ export default function Sidebar({
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-200 bg-white flex flex-col h-full select-none transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col h-full select-none transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
         mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
       }`}>
       {/* Brand logo & title */}
-      <div className="p-4 border-b border-slate-100 flex items-center space-x-2.5">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center space-x-2.5">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-400 flex items-center justify-center text-white shadow-premium">
           <Layers className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="font-semibold text-slate-800 leading-none text-[15px]">AetherRAG</h1>
-          <span className="text-[11px] font-medium text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+          <h1 className="font-semibold text-slate-800 dark:text-slate-100 leading-none text-[15px]">AetherRAG</h1>
+          <span className="text-[11px] font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 px-1.5 py-0.5 rounded mt-1 inline-block">
             Enterprise Suite
           </span>
         </div>
@@ -87,8 +87,8 @@ export default function Sidebar({
               onClick={() => setActiveView(item.id)}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[13px] font-medium transition-all duration-150 ${
                 isActive 
-                  ? 'bg-brand-50 text-brand-700 shadow-subtle' 
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-400 shadow-subtle' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <div className="flex items-center space-x-3">
@@ -101,7 +101,7 @@ export default function Sidebar({
         })}
       </div>
 
-      <div className="border-t border-slate-100 my-3" />
+      <div className="border-t border-slate-100 dark:border-slate-800 my-3" />
 
       {/* Chat History Section */}
       <div className="flex-1 flex flex-col min-h-0 px-3">
@@ -122,7 +122,7 @@ export default function Sidebar({
             placeholder="Search sessions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full text-[12px] bg-slate-50 border border-slate-100 hover:border-slate-200 focus:bg-white focus:border-brand-300 focus:ring-1 focus:ring-brand-100 rounded-lg pl-8 pr-3 py-1.5 outline-none transition-all"
+            className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 focus:bg-white dark:focus:bg-slate-950 focus:border-brand-300 focus:ring-1 focus:ring-brand-100 rounded-lg pl-8 pr-3 py-1.5 outline-none transition-all dark:text-slate-200"
           />
         </div>
 
@@ -139,8 +139,8 @@ export default function Sidebar({
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all text-[12px] ${
                   isSelected && activeView === 'chat'
-                    ? 'bg-slate-100 font-semibold text-slate-900 border-l-2 border-brand-600'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-800 font-semibold text-slate-900 dark:text-slate-100 border-l-2 border-brand-600'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 <div className="truncate pr-1 flex items-center space-x-2">
@@ -160,14 +160,14 @@ export default function Sidebar({
       </div>
 
       {/* Footer Profile */}
-      <div className="p-3 border-t border-slate-100 bg-slate-50">
-        <div className="flex items-center space-x-3 p-1.5 hover:bg-slate-200/50 rounded-xl cursor-pointer transition-all">
-          <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs border border-brand-200">
+      <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+        <div className="flex items-center space-x-3 p-1.5 hover:bg-slate-200/50 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all">
+          <div className="w-9 h-9 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center text-brand-700 dark:text-brand-400 font-bold text-xs border border-brand-200 dark:border-brand-800">
             SR
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-semibold text-slate-800 truncate">Sarbjeet Randhawa</p>
-            <p className="text-[10px] text-slate-500 truncate flex items-center space-x-1">
+            <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 truncate">Sarbjeet Randhawa</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center space-x-1">
               <ShieldCheck className="w-3 h-3 text-emerald-500 inline mr-0.5" />
               <span>Admin Access</span>
             </p>

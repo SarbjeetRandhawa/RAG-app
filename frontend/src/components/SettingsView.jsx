@@ -66,13 +66,13 @@ export default function SettingsView({
   };
 
   return (
-    <div className="flex-1 p-8 bg-slate-50 space-y-8 select-none">
+    <div className="flex-1 p-8 bg-slate-50 dark:bg-slate-900 space-y-8 select-none transition-colors duration-200">
       
       {/* Page Title */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col space-y-1">
-          <h2 className="text-xl font-bold text-slate-800">Advanced Pipeline Config</h2>
-          <p className="text-[13px] text-slate-500">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Advanced Pipeline Config</h2>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400">
             Tune embedding indices, reranking networks, generator behaviors, and reflection guardrails.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function SettingsView({
         <div className="flex items-center space-x-2">
           <button
             onClick={handleReset}
-            className="px-3.5 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[12px] font-semibold flex items-center space-x-1.5 transition-all active:scale-[0.98]"
+            className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-[12px] font-semibold flex items-center space-x-1.5 transition-all active:scale-[0.98]"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Defaults</span>
@@ -99,10 +99,10 @@ export default function SettingsView({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* CARD 1: MODEL ROUTING */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-subtle space-y-6">
-          <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
-            <BrainCircuit className="w-5 h-5 text-brand-600" />
-            <h3 className="text-[13px] font-extrabold text-slate-800 uppercase tracking-wider">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-subtle space-y-6">
+          <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <BrainCircuit className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+            <h3 className="text-[13px] font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
               AI Model Orchestrator
             </h3>
           </div>
@@ -110,14 +110,14 @@ export default function SettingsView({
           <div className="space-y-4">
             {/* Embedding Model */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase flex items-center">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center">
                 Embedding Model
                 <HelpCircle className="w-3 h-3 text-slate-300 ml-1 cursor-pointer" title="Used to generate dense vectors for documents and query matching." />
               </label>
               <select
                 value={selectedEmbeddingModel}
                 onChange={(e) => setSelectedEmbeddingModel(e.target.value)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400 dark:focus:border-brand-500 text-slate-800 dark:text-slate-200"
               >
                 {embeddingModels.map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
@@ -127,14 +127,14 @@ export default function SettingsView({
 
             {/* Reranker Model */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase flex items-center">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center">
                 Reranker Model
                 <HelpCircle className="w-3 h-3 text-slate-300 ml-1 cursor-pointer" title="Refines retrieval scores to order matching passages by semantic accuracy." />
               </label>
               <select
                 value={rerankerModel}
                 onChange={(e) => setRerankerModel(e.target.value)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400 dark:focus:border-brand-500 text-slate-800 dark:text-slate-200"
               >
                 {rerankers.map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
@@ -144,14 +144,14 @@ export default function SettingsView({
 
             {/* LLM Model */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase flex items-center">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center">
                 LLM Generator
                 <HelpCircle className="w-3 h-3 text-slate-300 ml-1 cursor-pointer" title="Underlying foundational model rendering the final natural response." />
               </label>
               <select
                 value={selectedLlmModel}
                 onChange={(e) => setSelectedLlmModel(e.target.value)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400 dark:focus:border-brand-500 text-slate-800 dark:text-slate-200"
               >
                 {llmModels.map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
@@ -161,14 +161,14 @@ export default function SettingsView({
 
             {/* Reflection Model */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase flex items-center">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center">
                 Critique & Reflection Model
                 <HelpCircle className="w-3 h-3 text-slate-300 ml-1 cursor-pointer" title="Self-reflection LLM checking references to avoid hallucinations." />
               </label>
               <select
                 value={reflectionModel}
                 onChange={(e) => setReflectionModel(e.target.value)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400 dark:focus:border-brand-500 text-slate-800 dark:text-slate-200"
               >
                 {reflectionModels.map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
@@ -178,14 +178,14 @@ export default function SettingsView({
 
             {/* Guardrail Policy */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase flex items-center">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center">
                 Safety Guardrail Model
                 <HelpCircle className="w-3 h-3 text-slate-300 ml-1 cursor-pointer" title="Validates prompt safety and output alignment rules." />
               </label>
               <select
                 value={guardrailModel}
                 onChange={(e) => setTerminalStateGuardrail(e)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg outline-none cursor-pointer focus:border-brand-400 dark:focus:border-brand-500 text-slate-800 dark:text-slate-200"
               >
                 {guardrails.map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
@@ -196,10 +196,10 @@ export default function SettingsView({
         </div>
 
         {/* CARD 2: INDEX PARAMETERS */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-subtle space-y-6">
-          <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
-            <Sliders className="w-5 h-5 text-indigo-500" />
-            <h3 className="text-[13px] font-extrabold text-slate-800 uppercase tracking-wider">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-subtle space-y-6">
+          <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <Sliders className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+            <h3 className="text-[13px] font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
               Retrieval & Indexing Parameters
             </h3>
           </div>
@@ -209,8 +209,8 @@ export default function SettingsView({
             {/* Chunk Size */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[11px] font-bold">
-                <span className="text-slate-500">CHUNK SIZE (Tokens)</span>
-                <span className="text-brand-600 bg-brand-50 px-2 py-0.5 rounded font-mono">{chunkSize} tokens</span>
+                <span className="text-slate-500 dark:text-slate-400">CHUNK SIZE (Tokens)</span>
+                <span className="text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/40 px-2 py-0.5 rounded font-mono">{chunkSize} tokens</span>
               </div>
               <input
                 type="range"
@@ -219,16 +219,16 @@ export default function SettingsView({
                 step="50"
                 value={chunkSize}
                 onChange={(e) => setChunkSize(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-600 dark:accent-brand-500"
               />
-              <p className="text-[10px] text-slate-400">Controls size of text blocks parsed. Larger chunks provide broader context; smaller chunks target details.</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">Controls size of text blocks parsed. Larger chunks provide broader context; smaller chunks target details.</p>
             </div>
 
             {/* Chunk Overlap */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[11px] font-bold">
-                <span className="text-slate-500">CHUNK OVERLAP</span>
-                <span className="text-brand-600 bg-brand-50 px-2 py-0.5 rounded font-mono">{chunkOverlap} tokens</span>
+                <span className="text-slate-500 dark:text-slate-400">CHUNK OVERLAP</span>
+                <span className="text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/40 px-2 py-0.5 rounded font-mono">{chunkOverlap} tokens</span>
               </div>
               <input
                 type="range"
@@ -237,16 +237,16 @@ export default function SettingsView({
                 step="10"
                 value={chunkOverlap}
                 onChange={(e) => setChunkOverlap(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-600 dark:accent-brand-500"
               />
-              <p className="text-[10px] text-slate-400">Maintains textual continuity across neighboring chunk boundaries.</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">Maintains textual continuity across neighboring chunk boundaries.</p>
             </div>
 
             {/* Top-K retrieved chunks */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[11px] font-bold">
-                <span className="text-slate-500">TOP-K (Matches retrieved)</span>
-                <span className="text-brand-600 bg-brand-50 px-2 py-0.5 rounded font-mono">{topK} chunks</span>
+                <span className="text-slate-500 dark:text-slate-400">TOP-K (Matches retrieved)</span>
+                <span className="text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/40 px-2 py-0.5 rounded font-mono">{topK} chunks</span>
               </div>
               <input
                 type="range"
@@ -255,16 +255,16 @@ export default function SettingsView({
                 step="1"
                 value={topK}
                 onChange={(e) => setTopK(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-600 dark:accent-brand-500"
               />
-              <p className="text-[10px] text-slate-400">Maximum number of relevant paragraphs sent to context builder.</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">Maximum number of relevant paragraphs sent to context builder.</p>
             </div>
 
             {/* Temperature */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[11px] font-bold">
-                <span className="text-slate-500">TEMPERATURE (Generation entropy)</span>
-                <span className="text-brand-600 bg-brand-50 px-2 py-0.5 rounded font-mono">{temperature}</span>
+                <span className="text-slate-500 dark:text-slate-400">TEMPERATURE (Generation entropy)</span>
+                <span className="text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/40 px-2 py-0.5 rounded font-mono">{temperature}</span>
               </div>
               <input
                 type="range"
@@ -273,9 +273,9 @@ export default function SettingsView({
                 step="0.05"
                 value={temperature}
                 onChange={(e) => setTemperature(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-600 dark:accent-brand-500"
               />
-              <p className="text-[10px] text-slate-400">Lower temperatures yield strict factual replication. Higher temperatures permit creative variance.</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">Lower temperatures yield strict factual replication. Higher temperatures permit creative variance.</p>
             </div>
 
           </div>
@@ -284,9 +284,9 @@ export default function SettingsView({
       </div>
 
       {/* Safety Policy Alert banner */}
-      <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-3">
-        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div className="text-[12px] text-amber-800 leading-relaxed">
+      <div className="bg-amber-50/50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4 flex items-start space-x-3">
+        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0" />
+        <div className="text-[12px] text-amber-800 dark:text-amber-300 leading-relaxed">
           <p className="font-bold mb-0.5">Enterprise Content Moderation Enabled</p>
           Settings modified here apply globally to active search nodes. Any policy changes are logged in compliance audits under ISO/IEC 42001 regulations.
         </div>

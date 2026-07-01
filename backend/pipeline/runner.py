@@ -66,8 +66,15 @@ def run_chat_pipeline(
     # 6 & 7. Prompt Builder & LLM Generator
     t0 = time.time()
     generator = GenerationService(max_context_tokens)
-    answer = generator.generate(rewritten_query, reranked_results)
-    gen_latency = (time.time() - t0) * 1000
+    answer_stream = generator.generate(rewritten_query, reranked_results)
+    
+    gen_latency_start = time.time()
+    full_answer = ""
+    for chunk in answer_stream:
+        full_answer += chunk
+        yield chunk
+
+    gen_latency = (time.time() - gen_latency_start) * 1000
     
     pipeline_data["prompt"] = {
         "latency": "5.0ms",
@@ -114,8 +121,8 @@ def run_chat_pipeline(
         rerank_latency, gen_latency, reflection_latency
     ]) / 1000.0
 
-    return {
-        "answer": answer,
+    yield {
+        "answer": full_answer,
         "citations": citations,
         "stats": {
             "latency": f"{total_latency_sec:.2f}s",
@@ -123,6 +130,5 @@ def run_chat_pipeline(
             "model": model
         },
         "pipeline_data": pipeline_data,
-        "reranked_results": reranked_results,
         "total_time": total_latency_sec
     }

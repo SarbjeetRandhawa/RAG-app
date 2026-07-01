@@ -22,13 +22,10 @@ class GenerationService:
         logging.info("Generating answer...\n")
         
         llm_start = time.time()
-        answer = generate_answer(prompt)
         llm_time = time.time() - llm_start
 
         logging.info("=" * 80)
         logging.info("Generation Timing Metrics")
         logging.info("=" * 80)
-        logging.info(f"LLM Time           : {llm_time:.4f} s")
-        logging.info("=" * 80)
 
-        return answer
+        return generate_answer(prompt)

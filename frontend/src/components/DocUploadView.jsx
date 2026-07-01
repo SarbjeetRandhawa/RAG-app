@@ -93,12 +93,12 @@ export default function DocUploadView({
   };
 
   return (
-    <div className="flex-1 p-8 bg-slate-50 space-y-8 select-none">
+    <div className="flex-1 p-8 bg-slate-50 dark:bg-slate-900 space-y-8 select-none transition-colors duration-200">
       
       {/* View Title */}
       <div className="flex flex-col space-y-1">
-        <h2 className="text-xl font-bold text-slate-800">Knowledge Ingestion Center</h2>
-        <p className="text-[13px] text-slate-500">
+        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Knowledge Ingestion Center</h2>
+        <p className="text-[13px] text-slate-500 dark:text-slate-400">
           Upload PDF reports, Markdown articles, or text documents to parse, split, and index them into Qdrant.
         </p>
       </div>
@@ -115,10 +115,10 @@ export default function DocUploadView({
             onDragLeave={handleDrag}
             onDrop={handleDrop}
             onClick={triggerFileInput}
-            className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-250 bg-white ${
+            className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-250 bg-white dark:bg-slate-800 ${
               dragActive 
-                ? 'border-brand-500 bg-brand-50/30 scale-[0.99]' 
-                : 'border-slate-200 hover:border-slate-300 shadow-sm'
+                ? 'border-brand-500 bg-brand-50/30 dark:bg-brand-900/20 scale-[0.99]' 
+                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm'
             }`}
           >
             <input 
@@ -129,17 +129,17 @@ export default function DocUploadView({
               onChange={handleFileChange}
             />
 
-            <div className="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4 shadow-subtle">
+            <div className="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-4 shadow-subtle">
               <UploadCloud className="w-6 h-6" />
             </div>
             
-            <h3 className="font-bold text-[14px] text-slate-700">Drag & drop files here</h3>
-            <p className="text-[11px] text-slate-400 mt-1">
+            <h3 className="font-bold text-[14px] text-slate-700 dark:text-slate-200">Drag & drop files here</h3>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
               Supports PDF, TXT, MD, DOCX up to 25MB
             </p>
             <button 
               type="button" 
-              className="mt-4 px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[12px] transition-all"
+              className="mt-4 px-4 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold rounded-lg text-[12px] transition-all"
             >
               Browse Files
             </button>
@@ -209,20 +209,20 @@ export default function DocUploadView({
           )}
 
           {/* Ingested Documents List */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-subtle space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-[13px] text-slate-800 uppercase tracking-wider">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-subtle space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <h3 className="font-extrabold text-[13px] text-slate-800 dark:text-slate-100 uppercase tracking-wider">
                 Ingested Documents Index
               </h3>
-              <span className="text-[11px] text-slate-500 font-bold bg-slate-50 px-2 py-0.5 rounded border">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded border dark:border-slate-700">
                 {documents.length} Files
               </span>
             </div>
 
-            <div className="divide-y divide-slate-100 overflow-x-auto">
+            <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
               <table className="w-full text-left text-[12px]">
                 <thead>
-                  <tr className="text-slate-400 font-bold">
+                  <tr className="text-slate-400 dark:text-slate-500 font-bold">
                     <th className="py-2.5 pr-4">File Name</th>
                     <th className="py-2.5 px-3">Size</th>
                     <th className="py-2.5 px-3">Chunks</th>
@@ -231,24 +231,24 @@ export default function DocUploadView({
                     <th className="py-2.5 pl-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {documents.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-50/50 transition-all">
-                      <td className="py-3 pr-4 font-medium text-slate-800 max-w-xs truncate flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <tr key={doc.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-all">
+                      <td className="py-3 pr-4 font-medium text-slate-800 dark:text-slate-200 max-w-xs truncate flex items-center space-x-2">
+                        <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
                         <span className="truncate">{doc.name}</span>
                       </td>
-                      <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">{doc.size}</td>
-                      <td className="py-3 px-3 font-semibold text-slate-600">{doc.chunks}</td>
+                      <td className="py-3 px-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{doc.size}</td>
+                      <td className="py-3 px-3 font-semibold text-slate-600 dark:text-slate-300">{doc.chunks}</td>
                       <td className="py-3 px-3">
-                        <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
+                        <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-medium">
                           {collections.find(c => c.id === doc.collectionId)?.name || 'Default'}
                         </span>
                       </td>
                       <td className="py-3 px-3">
                         <div className="flex flex-wrap gap-1">
                           {doc.tags.map((t, idx) => (
-                            <span key={idx} className="text-[9px] bg-brand-50 text-brand-700 px-1.5 py-0.2 rounded">
+                            <span key={idx} className="text-[9px] bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 px-1.5 py-0.2 rounded">
                               {t}
                             </span>
                           ))}
@@ -280,21 +280,21 @@ export default function DocUploadView({
 
         {/* RIGHT COLUMN: METADATA & PARSING SETTINGS CARD */}
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-subtle space-y-4">
-            <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
-              <Sliders className="w-4 h-4 text-brand-500" />
-              <h3 className="font-extrabold text-[13px] text-slate-800 uppercase tracking-wider">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-subtle space-y-4">
+            <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+              <Sliders className="w-4 h-4 text-brand-500 dark:text-brand-400" />
+              <h3 className="font-extrabold text-[13px] text-slate-800 dark:text-slate-100 uppercase tracking-wider">
                 Ingestion Config
               </h3>
             </div>
 
             {/* Target Collection */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500">Destination Collection</label>
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Destination Collection</label>
               <select
                 value={targetCollection}
                 onChange={(e) => setTargetCollection(e.target.value)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2 rounded-lg outline-none cursor-pointer"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-lg outline-none cursor-pointer text-slate-800 dark:text-slate-200 focus:border-brand-400 dark:focus:border-brand-500"
               >
                 {collections.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -304,28 +304,28 @@ export default function DocUploadView({
 
             {/* Author */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500">Document Owner</label>
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Document Owner</label>
               <input
                 type="text"
                 value={metaAuthor}
                 onChange={(e) => setMetaAuthor(e.target.value)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2 rounded-lg outline-none"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-lg outline-none text-slate-800 dark:text-slate-200 focus:border-brand-400 dark:focus:border-brand-500"
               />
             </div>
 
             {/* Metadata Tags */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500">Metadata Tags (Comma-separated)</label>
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Metadata Tags (Comma-separated)</label>
               <input
                 type="text"
                 value={metaTags}
                 onChange={(e) => setMetaTags(e.target.value)}
-                className="w-full text-[12px] bg-slate-50 border border-slate-200 p-2 rounded-lg outline-none font-mono"
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-lg outline-none font-mono text-slate-800 dark:text-slate-200 focus:border-brand-400 dark:focus:border-brand-500"
               />
             </div>
 
-            <div className="border-t border-slate-100 pt-3 text-[11px] text-slate-400 leading-relaxed bg-slate-50 -mx-5 -mb-5 p-4 rounded-b-2xl border-t">
-              <p className="font-semibold text-slate-700 mb-1 flex items-center">
+            <div className="border-t border-slate-100 dark:border-slate-700 pt-3 text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed bg-slate-50 dark:bg-slate-900 -mx-5 -mb-5 p-4 rounded-b-2xl">
+              <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center">
                 <Database className="w-3.5 h-3.5 text-brand-600 mr-1.5" />
                 OCR & Parsing Pipeline
               </p>

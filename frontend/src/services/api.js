@@ -35,7 +35,7 @@ export const deleteDocument = async (documentId) => {
   return response.json();
 };
 
-export const chatQuery = async (query, model, collectionId) => {
+export const chatQuery = async (query, model, collectionId, onMessage) => {
   const response = await fetch(`${BASE_URL}/chat`, {
     method: 'POST',
     headers: {
@@ -44,7 +44,42 @@ export const chatQuery = async (query, model, collectionId) => {
     body: JSON.stringify({ query, model, collectionId }),
   });
   if (!response.ok) throw new Error('Failed to process chat query');
-  return response.json();
+  
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finalData = {};
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); 
+    
+    for (const line of lines) {
+      if (line.trim()) {
+        const parsed = JSON.parse(line);
+        if (parsed.type === "chunk") {
+          if (onMessage) onMessage(parsed.text);
+        } else if (parsed.type === "final") {
+          finalData = parsed.data;
+        } else if (parsed.type === "error") {
+          throw new Error(parsed.error);
+        }
+      }
+    }
+  }
+  
+  if (buffer.trim()) {
+    const parsed = JSON.parse(buffer);
+    if (parsed.type === "final") {
+      finalData = parsed.data;
+    }
+  }
+
+  return finalData;
 };
 
 export const checkHealth = async () => {

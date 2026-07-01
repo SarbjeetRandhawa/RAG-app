@@ -45,18 +45,18 @@ export default function AnalyticsView({ documents, analyticsData }) {
   }));
 
   return (
-    <div className="flex-1 p-8 bg-slate-50 space-y-8 select-none">
+    <div className="flex-1 p-8 bg-slate-50 dark:bg-slate-900 space-y-8 select-none transition-colors duration-200">
       
       {/* Page Title */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col space-y-1">
-          <h2 className="text-xl font-bold text-slate-800">Analytics & Performance Dashboard</h2>
-          <p className="text-[13px] text-slate-500">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Analytics & Performance Dashboard</h2>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400">
             Real-time diagnostics tracking vector index metrics, database response rates, and LLM throughput times.
           </p>
         </div>
-        <div className="flex items-center space-x-2 bg-white px-3 py-1.5 border border-slate-200 rounded-xl shadow-subtle text-[11px] font-bold text-slate-600">
-          <Activity className="w-3.5 h-3.5 text-brand-600" />
+        <div className="flex items-center space-x-2 bg-white dark:bg-slate-800 px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-xl shadow-subtle text-[11px] font-bold text-slate-600 dark:text-slate-300">
+          <Activity className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
           <span>Live Metrics Stream</span>
         </div>
       </div>
@@ -66,17 +66,17 @@ export default function AnalyticsView({ documents, analyticsData }) {
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-subtle flex flex-col justify-between">
+            <div key={s.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-subtle flex flex-col justify-between">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{s.label}</span>
-                <div className="p-1.5 rounded-lg bg-brand-50 text-brand-600 border border-brand-100">
+                <div className="p-1.5 rounded-lg bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-800">
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight">{s.value}</h3>
+                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">{s.value}</h3>
                 <span className={`text-[10px] font-semibold mt-1 inline-block ${
-                  s.changeType === 'down' ? 'text-emerald-600' : 'text-brand-600'
+                  s.changeType === 'down' ? 'text-emerald-600 dark:text-emerald-400' : 'text-brand-600 dark:text-brand-400'
                 }`}>
                   {s.change}
                 </span>
@@ -90,23 +90,23 @@ export default function AnalyticsView({ documents, analyticsData }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Latency Breakdown Bar Chart (SVG-based) */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-subtle flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-subtle flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-5">
             <div>
-              <h3 className="text-[13px] font-extrabold text-slate-800 uppercase tracking-wider">
+              <h3 className="text-[13px] font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
                 Ingestion & RAG Latency Breakdown
               </h3>
-              <p className="text-[11px] text-slate-400">Embedding lookup vs. LLM response duration (ms)</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Embedding lookup vs. LLM response duration (ms)</p>
             </div>
             {/* Legend */}
             <div className="flex items-center space-x-3 text-[10px] font-bold">
               <div className="flex items-center space-x-1">
-                <span className="w-2.5 h-2.5 rounded bg-brand-400" />
-                <span className="text-slate-500">Embedding</span>
+                <span className="w-2.5 h-2.5 rounded bg-[#09bd06ff]" />
+                <span className="text-slate-500 dark:text-slate-400">Embedding</span>
               </div>
               <div className="flex items-center space-x-1">
-                <span className="w-2.5 h-2.5 rounded bg-indigo-500" />
-                <span className="text-slate-500">LLM Generation</span>
+                <span className="w-2.5 h-2.5 rounded bg-[#2318c5ff]" />
+                <span className="text-slate-500 dark:text-slate-400">LLM Generation</span>
               </div>
             </div>
           </div>
@@ -153,7 +153,7 @@ export default function AnalyticsView({ documents, analyticsData }) {
                       y={llmY} 
                       width={barWidth} 
                       height={llmHeight} 
-                      fill={hoveredBar === i ? '#4f46e5' : '#6366f1'} 
+                      fill={hoveredBar === i ? '#2318c5ff' : '#2318c5ff'} 
                       rx="3" 
                       className="transition-all duration-200"
                     />
@@ -163,14 +163,14 @@ export default function AnalyticsView({ documents, analyticsData }) {
                       y={embedY} 
                       width={barWidth} 
                       height={embedHeight} 
-                      fill={hoveredBar === i ? '#2563eb' : '#3b82f6'} 
+                      fill={hoveredBar === i ? '#09bd06ff' : '#09bd06ff'} 
                       rx="3" 
                       className="transition-all duration-200"
                     />
                     {/* X-axis labels */}
                     <text 
                       x={startX + barWidth/2} 
-                      y="220" 
+                      y="220"   
                       textAnchor="middle" 
                       fill="#94a3b8" 
                       fontSize="10" 
@@ -199,15 +199,15 @@ export default function AnalyticsView({ documents, analyticsData }) {
         </div>
 
         {/* Daily Queries Line Chart (SVG-based) */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-subtle flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-subtle flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-5">
             <div>
-              <h3 className="text-[13px] font-extrabold text-slate-800 uppercase tracking-wider">
+              <h3 className="text-[13px] font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
                 Daily RAG Search Volume
               </h3>
-              <p className="text-[11px] text-slate-400">Total processed search queries per day</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Total processed search queries per day</p>
             </div>
-            <div className="text-[11px] bg-slate-50 border px-2 py-0.5 rounded text-slate-500 font-bold">
+            <div className="text-[11px] bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 px-2 py-0.5 rounded text-slate-500 dark:text-slate-400 font-bold">
               Total: {queryVolume.reduce((acc, q) => acc + q.queries, 0)} queries
             </div>
           </div>
@@ -316,21 +316,21 @@ export default function AnalyticsView({ documents, analyticsData }) {
       </div>
 
       {/* TOP QUERIES TABLE */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-subtle space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-subtle space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
           <div className="flex items-center space-x-2">
-            <Award className="w-4 h-4 text-brand-600" />
-            <h3 className="font-extrabold text-[13px] text-slate-800 uppercase tracking-wider">
+            <Award className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+            <h3 className="font-extrabold text-[13px] text-slate-800 dark:text-slate-100 uppercase tracking-wider">
               High Frequency Queries & Retrieve Accuracy
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">Confidence average: {topQueries.length > 0 ? (topQueries.reduce((acc, q) => acc + q.confidence, 0) / topQueries.length).toFixed(1) : 0}%</span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Confidence average: {topQueries.length > 0 ? (topQueries.reduce((acc, q) => acc + q.confidence, 0) / topQueries.length).toFixed(1) : 0}%</span>
         </div>
 
-        <div className="divide-y divide-slate-100 overflow-x-auto">
+        <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
           <table className="w-full text-left text-[12px]">
             <thead>
-              <tr className="text-slate-400 font-bold">
+              <tr className="text-slate-400 dark:text-slate-500 font-bold">
                 <th className="py-2 pr-4">Search Queries</th>
                 <th className="py-2 px-3">Hit Count</th>
                 <th className="py-2 px-3">Model Accuracy Score</th>
@@ -340,17 +340,17 @@ export default function AnalyticsView({ documents, analyticsData }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {topQueries.map((q, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 transition-all">
-                  <td className="py-3 pr-4 font-semibold text-slate-800">{q.query}</td>
-                  <td className="py-3 px-3 text-slate-600 font-mono">{q.count}</td>
+                <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-all">
+                  <td className="py-3 pr-4 font-semibold text-slate-800 dark:text-slate-200">{q.query}</td>
+                  <td className="py-3 px-3 text-slate-600 dark:text-slate-300 font-mono">{q.count}</td>
                   <td className="py-3 px-3">
-                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-800">
                       {q.confidence}%
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-slate-500 font-mono">{q.latency}</td>
+                  <td className="py-3 px-3 text-slate-500 dark:text-slate-400 font-mono">{q.latency}</td>
                   <td className="py-3 pl-4 text-right">
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                    <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-bold">
                       Cached & Optimized
                     </span>
                   </td>

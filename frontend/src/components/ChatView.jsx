@@ -23,7 +23,8 @@ import {
   BookOpen,
   ArrowRight,
   RefreshCcw,
-  Volume2
+  Volume2,
+  BrainCircuit
 } from 'lucide-react';
 
 export default function ChatView({ 
@@ -91,9 +92,9 @@ export default function ChatView({
   };
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-slate-50 relative h-full">
+    <div className="flex-1 flex overflow-hidden bg-slate-50 dark:bg-slate-900 relative h-full transition-colors duration-200">
       {/* LEFT: MAIN CHAT PANEL */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white shadow-subtle border-r border-slate-100 h-full relative">
+      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950 shadow-subtle border-r border-slate-100 dark:border-slate-800 h-full relative transition-colors duration-200">
         {/* Messages List Area */}
         <div className="flex-grow overflow-y-auto p-6 space-y-6">
           {messages.length === 0 ? (
@@ -102,8 +103,8 @@ export default function ChatView({
                 <BrainCircuit className="w-8 h-8 animate-pulse" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-slate-800">Enterprise Intelligent Search</h2>
-                <p className="text-[13px] text-slate-500 leading-relaxed">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Enterprise Intelligent Search</h2>
+                <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Query across uploaded documents, PDF research papers, technical specs, and enterprise wikis. Inspect the vector pipeline in real-time.
                 </p>
               </div>
@@ -118,7 +119,7 @@ export default function ChatView({
                   <button
                     key={idx}
                     onClick={() => onSendMessage(q)}
-                    className="p-3 text-left bg-slate-50 hover:bg-slate-100/80 border border-slate-100 hover:border-slate-200 rounded-xl text-[12px] text-slate-600 font-medium transition-all"
+                    className="p-3 text-left bg-slate-50 dark:bg-slate-900 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 rounded-xl text-[12px] text-slate-600 dark:text-slate-300 font-medium transition-all"
                   >
                     {q} &rarr;
                   </button>
@@ -126,7 +127,9 @@ export default function ChatView({
               </div>
             </div>
           ) : (
-            messages.map((m) => (
+            messages.map((m) => {
+              if (m.role === 'assistant' && !m.content) return null;
+              return (
               <div key={m.id} className="space-y-3">
                 {/* User / AI Message Row */}
                 <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -136,7 +139,7 @@ export default function ChatView({
                     <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold shadow-subtle border ${
                       m.role === 'user' 
                         ? 'bg-slate-800 text-white border-slate-700' 
-                        : 'bg-brand-50 text-brand-700 border-brand-200'
+                        : 'bg-brand-50 dark:bg-brand-900/50 text-brand-700 dark:text-brand-400 border-brand-200 dark:border-brand-800'
                     }`}>
                       {m.role === 'user' ? 'US' : 'AI'}
                     </div>
@@ -145,14 +148,14 @@ export default function ChatView({
                     <div className={`p-4 rounded-2xl message-bubble ${
                       m.role === 'user'
                         ? 'bg-slate-800 text-slate-50'
-                        : 'bg-white text-slate-800 border border-slate-200 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm'
                     }`}>
                       {/* Markdown Text Body */}
                       <MarkdownRenderer content={m.content} />
 
                       {/* AI citations & metadata */}
                       {m.role === 'assistant' && (
-                        <div className="mt-4 pt-3 border-t border-slate-100 space-y-3">
+                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
                           {/* Response Stats */}
                           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-slate-400 font-medium">
                             <span className="flex items-center">
@@ -181,7 +184,7 @@ export default function ChatView({
                                   <button
                                     key={i}
                                     onClick={() => setSelectedCitation(c)}
-                                    className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-200 text-[11px] text-slate-600 hover:text-brand-700 transition-all font-medium"
+                                    className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-brand-50 dark:hover:bg-brand-900/30 border border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700 text-[11px] text-slate-600 dark:text-slate-400 hover:text-brand-700 dark:hover:text-brand-400 transition-all font-medium"
                                   >
                                     <FileText className="w-3 h-3 text-slate-400 group-hover:text-brand-500" />
                                     <span>{c.fileName} (P.{c.page})</span>
@@ -224,16 +227,17 @@ export default function ChatView({
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
 
-          {isStreaming && (
+          {isStreaming && (!messages.length || (messages[messages.length - 1].role === 'assistant' && !messages[messages.length - 1].content)) && (
             <div className="flex justify-start">
               <div className="flex gap-3 max-w-[85%]">
                 <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 flex-shrink-0 flex items-center justify-center text-[10px] font-bold border border-brand-200 animate-pulse">
                   AI
                 </div>
-                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
                   <div className="flex items-center space-x-1.5">
                     <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce" style={{ animationDelay: '0ms' }} />
                     <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -277,8 +281,8 @@ export default function ChatView({
         )}
 
         {/* Input Bar Form */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50">
-          <form onSubmit={handleSubmit} className="relative bg-white border border-slate-200 hover:border-slate-300 focus-within:border-brand-400 focus-within:ring-1 focus-within:ring-brand-100 rounded-xl p-2 transition-all flex flex-col shadow-subtle">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+          <form onSubmit={handleSubmit} className="relative bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 focus-within:border-brand-400 dark:focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-100 dark:focus-within:ring-brand-900/30 rounded-xl p-2 transition-all flex flex-col shadow-subtle">
             
             <textarea
               value={inputText}
@@ -291,10 +295,10 @@ export default function ChatView({
               }}
               placeholder="Ask anything about index, vectors, or documents..."
               rows={2}
-              className="w-full resize-none outline-none border-none text-[13px] text-slate-800 p-2 placeholder-slate-400 bg-transparent"
+              className="w-full resize-none outline-none border-none text-[13px] text-slate-800 dark:text-slate-100 p-2 placeholder-slate-400 bg-transparent"
             />
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-50 mt-1 select-none">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800 mt-1 select-none">
               <div className="flex items-center space-x-1">
                 
                 {/* Attach File Button */}
@@ -334,8 +338,8 @@ export default function ChatView({
                 disabled={!inputText.trim() || isStreaming}
                 className={`flex items-center justify-center p-2 rounded-lg text-white transition-all ${
                   inputText.trim() && !isStreaming
-                    ? 'bg-brand-600 hover:bg-brand-700 shadow-premium active:scale-95'
-                    : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                    ? 'bg-brand-600 dark:text-white hover:bg-brand-700 shadow-premium active:scale-95'
+                    : 'bg-slate-100 bg-black dark:text-black text-slate-300 cursor-not-allowed'
                 }`}
               >
                 <Send className="w-4 h-4" />
@@ -369,7 +373,7 @@ export default function ChatView({
       )}
 
       {/* RIGHT: COLLAPSIBLE PIPELINE INSPECTOR */}
-      <div className={`transition-all duration-300 ease-in-out border-l border-slate-200 bg-white flex flex-col h-full shadow-premium select-none relative z-10 ${
+      <div className={`transition-all duration-300 ease-in-out border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col h-full shadow-premium select-none relative z-10 ${
         isInspectorOpen ? 'w-80' : 'w-0 overflow-hidden border-l-0'
       }`}>
         {/* Toggle tab floating */}
@@ -381,10 +385,10 @@ export default function ChatView({
         </button>
 
         {/* Inspector Header */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <TrendingUp className="w-4 h-4 text-brand-600" />
-            <h3 className="text-[13px] font-bold text-slate-800">Pipeline Inspector</h3>
+            <TrendingUp className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+            <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-100">Pipeline Inspector</h3>
           </div>
           <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
             Active Trace
@@ -441,7 +445,7 @@ export default function ChatView({
         </div>
 
         {/* Selected Stage Detail Panel */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50 max-h-80 overflow-y-auto">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 max-h-80 overflow-y-auto">
           {(() => {
             const selectedStageInfo = pipelineStages.find(s => s.id === activeInspectorStage);
             const data = getStageData(selectedStageInfo?.key);
@@ -463,11 +467,11 @@ export default function ChatView({
 
                 {/* Sub details attributes */}
                 {data?.details && (
-                  <div className="space-y-2 mt-2 bg-white rounded-lg p-2.5 border border-slate-200">
+                  <div className="space-y-2 mt-2 bg-white dark:bg-slate-950 rounded-lg p-2.5 border border-slate-200 dark:border-slate-800">
                     {Object.entries(data.details).map(([key, val]) => (
                       <div key={key} className="text-[11px] space-y-0.5">
                         <span className="font-bold text-slate-400 capitalize text-[9px]">{key}:</span>
-                        <div className="bg-slate-50 rounded p-1.5 font-mono text-[10px] text-slate-700 break-words max-h-24 overflow-y-auto">
+                        <div className="bg-slate-50 dark:bg-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-700 dark:text-slate-300 break-words max-h-24 overflow-y-auto">
                           {typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val)}
                         </div>
                       </div>
