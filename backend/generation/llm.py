@@ -41,3 +41,21 @@ def generate_answer(prompt: str):
     for chunk in response:
         if len(chunk.choices) > 0 and chunk.choices[0].delta.content is not None:
             yield chunk.choices[0].delta.content
+
+def complete_text(system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
+    response = _client.chat.completions.create(
+        model=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
+        messages=[
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ],
+        temperature=temperature
+    )
+
+    return response.choices[0].message.content.strip()

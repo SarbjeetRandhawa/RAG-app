@@ -12,6 +12,30 @@ export const fetchAnalytics = async () => {
   return response.json();
 };
 
+export const fetchSessions = async () => {
+  const response = await fetch(`${BASE_URL}/sessions`);
+  if (!response.ok) throw new Error('Failed to fetch sessions');
+  return response.json();
+};
+
+export const createSession = async (title = 'New Chat Session', collectionId = 'col1') => {
+  const response = await fetch(`${BASE_URL}/sessions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title, collectionId }),
+  });
+  if (!response.ok) throw new Error('Failed to create session');
+  return response.json();
+};
+
+export const fetchSession = async (sessionId) => {
+  const response = await fetch(`${BASE_URL}/sessions/${sessionId}`);
+  if (!response.ok) throw new Error('Failed to fetch session');
+  return response.json();
+};
+
 export const uploadDocument = async (file, tags, author, collectionId) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -35,13 +59,13 @@ export const deleteDocument = async (documentId) => {
   return response.json();
 };
 
-export const chatQuery = async (query, model, collectionId, onMessage) => {
+export const chatQuery = async (query, model, collectionId, sessionId, memory, onMessage) => {
   const response = await fetch(`${BASE_URL}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ query, model, collectionId }),
+    body: JSON.stringify({ query, model, collectionId, sessionId, memory }),
   });
   if (!response.ok) throw new Error('Failed to process chat query');
   

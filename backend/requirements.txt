@@ -10,3 +10,5 @@ python-multipart
 langchain-text-splitters
 google-genai
 llama-cpp-python
+SQLAlchemy
+psycopg2-binary

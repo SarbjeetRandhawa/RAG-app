@@ -8,7 +8,7 @@ class GenerationService:
     def __init__(self, max_context_tokens: int):
         self.max_context_tokens = max_context_tokens
 
-    def generate(self, query: str, reranked_results: list[RetrievedChunk]) -> str:
+    def generate(self, query: str, reranked_results: list[RetrievedChunk], memory_context=None) -> str:
         top_chunks = []
         current_tokens = 0
         for rc in reranked_results:
@@ -18,7 +18,7 @@ class GenerationService:
             else:
                 break
 
-        prompt = PromptBuilder().build(query, top_chunks)
+        prompt = PromptBuilder().build(query, top_chunks, memory_context)
         logging.info("Generating answer...\n")
         
         llm_start = time.time()

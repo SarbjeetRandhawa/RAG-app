@@ -61,21 +61,11 @@
 # if __name__ == "__main__":
 #     main()
 
-from llama_cpp import Llama
+from sqlalchemy import create_engine
 
-llm = Llama(
-    model_path="models/Qwen3-8B-Q4_K_M.gguf",
-    n_ctx=4096,
-    verbose=False
+engine = create_engine(
+    "postgresql+psycopg2://postgres:postgres@localhost:5433/Rag_learning"
 )
 
-response = llm.create_chat_completion(
-    messages=[
-        {
-            "role": "user",
-            "content": "Hello"
-        }
-    ]
-)
-
-print(response["choices"][0]["message"]["content"])
+with engine.connect() as conn:
+    print("Connected!")

@@ -18,6 +18,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Imports from existing proper pipeline modules/code structure
 from app import create_collection, ingest_document, COLLECTION_NAME, client
 from pipeline.runner import run_chat_pipeline
+from db import (
+    add_chat_message,
+    create_chat_session,
+    delete_empty_chat_sessions,
+    get_chat_session,
+    get_session_memory,
+    get_session_messages,
+    init_db,
+    list_chat_sessions,
+    update_session_memory,
+    update_session_title_if_default,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
@@ -78,13 +90,28 @@ def save_analytics(data: dict):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 # Pydantic models
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatMemory(BaseModel):
+    summary: Optional[str] = ""
+    messages: Optional[List[ChatMessage]] = []
+
 class ChatRequest(BaseModel):
     query: str
     model: Optional[str] = "gpt-4.1"
     collectionId: Optional[str] = "col1"
+    sessionId: Optional[str] = None
+    memory: Optional[ChatMemory] = None
+
+class CreateSessionRequest(BaseModel):
+    title: Optional[str] = "New Chat Session"
+    collectionId: Optional[str] = "col1"
 
 @app.on_event("startup")
 def startup_event():
+    init_db()
     create_collection()
 
 @app.get("/api/health")
@@ -98,6 +125,29 @@ def health_check():
 @app.get("/api/documents")
 def get_documents():
     return load_manifest()
+
+@app.get("/api/sessions")
+def get_sessions():
+    delete_empty_chat_sessions()
+    return list_chat_sessions()
+
+@app.post("/api/sessions")
+def create_session(req: CreateSessionRequest):
+    return create_chat_session(
+        title=req.title or "New Chat Session",
+        collection_id=req.collectionId or "col1"
+    )
+
+@app.get("/api/sessions/{session_id}")
+def get_session(session_id: str):
+    session = get_chat_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {
+        "session": session,
+        "messages": get_session_messages(session_id),
+        "memory": session["memory"]
+    }
 
 @app.post("/api/upload")
 async def upload_document(
@@ -255,12 +305,24 @@ def get_analytics():
 def chat_query(req: ChatRequest):
     def generate():
         try:
+            session_id = req.sessionId
+            if session_id and not get_chat_session(session_id):
+                raise HTTPException(status_code=404, detail="Session not found")
+            if not session_id:
+                session = create_chat_session(collection_id=req.collectionId or "col1")
+                session_id = session["id"]
+
+            update_session_title_if_default(session_id, req.query)
+            add_chat_message(session_id, "user", req.query)
+
+            request_memory = get_session_memory(session_id)
             result_gen = run_chat_pipeline(
                 query=req.query,
                 client=client,
                 collection_name=COLLECTION_NAME,
                 max_context_tokens=6000,
-                model=req.model or "gpt-4.1"
+                model=req.model or "gpt-4.1",
+                memory=request_memory
             )
             
             for item in result_gen:
@@ -301,8 +363,18 @@ def chat_query(req: ChatRequest):
                         "answer": item["answer"],
                         "citations": item["citations"],
                         "stats": item["stats"],
-                        "pipeline_data": item["pipeline_data"]
+                        "pipeline_data": item["pipeline_data"],
+                        "memory": item.get("memory", {})
                     }
+                    add_chat_message(
+                        session_id,
+                        "assistant",
+                        item["answer"],
+                        citations=item["citations"],
+                        stats=item["stats"]
+                    )
+                    update_session_memory(session_id, item.get("memory", {}))
+                    final_data["sessionId"] = session_id
                     yield json.dumps({"type": "final", "data": final_data}) + "\n"
         except Exception as e:
             logging.error(f"Chat execution failed: {e}")

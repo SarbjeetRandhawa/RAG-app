@@ -4,15 +4,18 @@ from qdrant_client import QdrantClient
 from retrieval.retriever import RetrieverService
 from models.reranker import rerank
 from generation.generator import GenerationService
+from generation.memory import build_memory_context, compact_memory, rewrite_query_with_memory
 
 def run_chat_pipeline(
     query: str, 
     client: QdrantClient, 
     collection_name: str, 
     max_context_tokens: int = 6000,
-    model: str = "gpt-4.1"
+    model: str = "gpt-4.1",
+    memory: dict | None = None
 ):
     pipeline_data = {}
+    memory_context = build_memory_context(memory)
     
     # 1. Query stage
     t0 = time.time()
@@ -26,12 +29,20 @@ def run_chat_pipeline(
     
     # 2. Query Rewrite
     t0 = time.time()
-    rewritten_query = raw_query.strip()
+    rewritten_query = rewrite_query_with_memory(raw_query, memory_context)
     rewrite_latency = (time.time() - t0) * 1000
     pipeline_data["rewrite"] = {
         "latency": f"{rewrite_latency:.1f}ms",
         "status": "success",
-        "details": {"rewritten": rewritten_query}
+        "details": {
+            "rawQuery": raw_query,
+            "rewritten": rewritten_query,
+            "historyTurnsUsed": memory_context["turns_used"],
+            "hasSummary": bool(memory_context["summary"]),
+            "rewriteProvider": "Groq",
+            "rewriteModel": memory_context["rewrite_model"],
+            "rewriteApi": memory_context["rewrite_api"]
+        }
     }
     
     # 3 & 4. Embedding & Vector Search
@@ -66,7 +77,7 @@ def run_chat_pipeline(
     # 6 & 7. Prompt Builder & LLM Generator
     t0 = time.time()
     generator = GenerationService(max_context_tokens)
-    answer_stream = generator.generate(rewritten_query, reranked_results)
+    answer_stream = generator.generate(rewritten_query, reranked_results, memory_context)
     
     gen_latency_start = time.time()
     full_answer = ""
@@ -79,7 +90,12 @@ def run_chat_pipeline(
     pipeline_data["prompt"] = {
         "latency": "5.0ms",
         "status": "success",
-        "details": {"contextLength": "estimated context tokens", "systemPromptLength": "350 tokens"}
+        "details": {
+            "contextLength": "estimated context tokens",
+            "systemPromptLength": "350 tokens",
+            "memorySummaryIncluded": bool(memory_context["summary"]),
+            "recentMessagesIncluded": memory_context["turns_used"]
+        }
     }
     pipeline_data["llm"] = {
         "latency": f"{gen_latency/1000.0:.3f}s",
@@ -121,6 +137,8 @@ def run_chat_pipeline(
         rerank_latency, gen_latency, reflection_latency
     ]) / 1000.0
 
+    updated_memory = compact_memory(memory, raw_query, full_answer)
+
     yield {
         "answer": full_answer,
         "citations": citations,
@@ -130,5 +148,6 @@ def run_chat_pipeline(
             "model": model
         },
         "pipeline_data": pipeline_data,
+        "memory": updated_memory,
         "total_time": total_latency_sec
     }

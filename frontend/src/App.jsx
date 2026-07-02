@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchDocuments, chatQuery, checkHealth, deleteDocument, fetchAnalytics } from './services/api';
+import { fetchDocuments, chatQuery, checkHealth, deleteDocument, fetchAnalytics, fetchSessions, createSession, fetchSession } from './services/api';
 
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -64,25 +64,23 @@ export default function App() {
   const [documents, setDocuments] = useState([]);
   const [analyticsData, setAnalyticsData] = useState(null);
 
+  // Chat Conversations State
+  const [chatHistory, setChatHistory] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
+
+  // Message store (chatId -> array of messages)
+  const [conversations, setConversations] = useState({});
+  const [conversationMemory, setConversationMemory] = useState({});
+
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [activePipelineData, setActivePipelineData] = useState(null);
+
   useEffect(() => {
     checkHealth().then(setBackendConnected);
     fetchDocuments().then(setDocuments).catch(console.error);
     fetchAnalytics().then(setAnalyticsData).catch(console.error);
+    initializeSessions();
   }, []);
-
-  // Chat Conversations State
-  const [chatHistory, setChatHistory] = useState([
-    { id: 'chat_1', title: 'New Chat Session' }
-  ]);
-  const [activeChatId, setActiveChatId] = useState('chat_1');
-
-  // Message store (chatId -> array of messages)
-  const [conversations, setConversations] = useState({
-    chat_1: []
-  });
-
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [activePipelineData, setActivePipelineData] = useState(null);
 
   // Initialize pipeline data for active trace
   useEffect(() => {
@@ -90,16 +88,65 @@ export default function App() {
   }, [activeChatId, selectedEmbeddingModel, selectedLlmModel, rerankerModel, reflectionModel]);
 
   // Create new session
-  const handleNewChat = () => {
-    const newId = 'chat_' + Date.now();
-    const newTitle = 'New Chat Session ' + (chatHistory.length + 1);
-    setChatHistory([{ id: newId, title: newTitle }, ...chatHistory]);
-    setConversations({
-      ...conversations,
-      [newId]: []
-    });
-    setActiveChatId(newId);
+  const initializeSessions = async () => {
+    try {
+      let sessions = await fetchSessions();
+      if (sessions.length === 0) {
+        const session = await createSession('New Chat Session', selectedCollection);
+        sessions = [session];
+      }
+      setChatHistory(sessions);
+      const firstSessionId = sessions[0].id;
+      setActiveChatId(firstSessionId);
+      await loadSession(firstSessionId);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const loadSession = async (sessionId) => {
+    try {
+      const data = await fetchSession(sessionId);
+      setConversations(prev => ({
+        ...prev,
+        [sessionId]: data.messages || []
+      }));
+      setConversationMemory(prev => ({
+        ...prev,
+        [sessionId]: {
+          summary: data.memory?.summary || "",
+          recentMessages: data.memory?.recentMessages || []
+        }
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectChat = async (id) => {
+    setActiveChatId(id);
+    setMobileMenuOpen(false);
     setActiveView('chat');
+    await loadSession(id);
+  };
+
+  const handleNewChat = async () => {
+    try {
+      const session = await createSession('New Chat Session', selectedCollection);
+      setChatHistory(prev => [session, ...prev]);
+      setConversations(prev => ({
+        ...prev,
+        [session.id]: []
+      }));
+      setConversationMemory(prev => ({
+        ...prev,
+        [session.id]: { summary: "", recentMessages: [] }
+      }));
+      setActiveChatId(session.id);
+      setActiveView('chat');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Simulate streaming response and pipeline milestones
@@ -110,8 +157,23 @@ export default function App() {
       role: 'user',
       content: text
     };
-    const currentChatId = activeChatId;
+    let currentChatId = activeChatId;
+    if (!currentChatId) {
+      const session = await createSession('New Chat Session', selectedCollection);
+      currentChatId = session.id;
+      setChatHistory(prev => [session, ...prev]);
+      setActiveChatId(currentChatId);
+    }
     const currentMsgs = conversations[currentChatId] || [];
+    const storedMemory = conversationMemory[currentChatId] || {};
+    const fallbackMessages = currentMsgs
+        .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content?.trim())
+        .slice(-9)
+        .map(m => ({ role: m.role, content: m.content }));
+    const memory = {
+      summary: storedMemory.summary || "",
+      messages: storedMemory.recentMessages?.length ? storedMemory.recentMessages : fallbackMessages
+    };
     
     // Update active chat title if it's generic new chat
     const activeChat = chatHistory.find(c => c.id === currentChatId);
@@ -157,7 +219,7 @@ export default function App() {
         [currentChatId]: [...(prev[currentChatId] || []), assistantMsg]
       }));
 
-      const finalResponse = await chatQuery(text, selectedLlmModel, selectedCollection, (chunk) => {
+      const finalResponse = await chatQuery(text, selectedLlmModel, selectedCollection, currentChatId, memory, (chunk) => {
         accumulatedContent += chunk;
         setConversations(prev => {
           const chatMsgs = prev[currentChatId] || [];
@@ -184,6 +246,16 @@ export default function App() {
       if (finalResponse.pipeline_data) {
         setActivePipelineData(finalResponse.pipeline_data);
       }
+      if (finalResponse.memory) {
+        setConversationMemory(prev => ({
+          ...prev,
+          [currentChatId]: {
+            summary: finalResponse.memory.summary || "",
+            recentMessages: finalResponse.memory.recentMessages || []
+          }
+        }));
+      }
+      fetchSessions().then(setChatHistory).catch(console.error);
     } catch (err) {
       console.error(err);
       const errorMsg = {
@@ -242,10 +314,7 @@ export default function App() {
         }}
         chatHistory={chatHistory}
         activeChatId={activeChatId}
-        setActiveChatId={(id) => {
-          setActiveChatId(id);
-          setMobileMenuOpen(false);
-        }}
+        setActiveChatId={handleSelectChat}
         onNewChat={() => {
           handleNewChat();
           setMobileMenuOpen(false);
