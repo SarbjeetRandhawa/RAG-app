@@ -5,6 +5,7 @@ from retrieval.retriever import RetrieverService
 from models.reranker import rerank
 from generation.generator import GenerationService
 from generation.memory import build_memory_context, compact_memory, rewrite_query_with_memory
+from Reflection.Reflector import Reflector
 
 def run_chat_pipeline(
     query: str, 
@@ -12,7 +13,8 @@ def run_chat_pipeline(
     collection_name: str, 
     max_context_tokens: int = 6000,
     model: str = "gpt-4.1",
-    memory: dict | None = None
+    memory: dict | None = None,
+    reflect: bool = True
 ):
     pipeline_data = {}
     memory_context = build_memory_context(memory)
@@ -103,14 +105,24 @@ def run_chat_pipeline(
         "details": {"tokensPerSec": "45 t/s", "model": model}
     }
     
-    # 8. Reflection
+    # 8. Reflection (optional)
     t0 = time.time()
-    self_critique_passed = True
+    reflector = Reflector(enabled=reflect)
+    try:
+        final_answer = reflector.reflect(raw_query, reranked_results, full_answer)
+        self_critique_passed = True if final_answer else False
+        reflection_status = "success"
+    except Exception:
+        # on any unexpected error, fall back to the original full_answer
+        final_answer = full_answer
+        self_critique_passed = False
+        reflection_status = "failed"
+
     reflection_latency = (time.time() - t0) * 1000
     pipeline_data["reflection"] = {
         "latency": f"{reflection_latency:.1f}ms",
-        "status": "success",
-        "details": {"model": "gpt-4o-mini", "selfCritiquePassed": self_critique_passed}
+        "status": reflection_status,
+        "details": {"model": "reflection-llm", "selfCritiquePassed": self_critique_passed}
     }
     
     # 9. Citations
@@ -137,10 +149,11 @@ def run_chat_pipeline(
         rerank_latency, gen_latency, reflection_latency
     ]) / 1000.0
 
-    updated_memory = compact_memory(memory, raw_query, full_answer)
+    # use the reflected final answer when updating memory and returning
+    updated_memory = compact_memory(memory, raw_query, final_answer)
 
     yield {
-        "answer": full_answer,
+        "answer": final_answer,
         "citations": citations,
         "stats": {
             "latency": f"{total_latency_sec:.2f}s",
