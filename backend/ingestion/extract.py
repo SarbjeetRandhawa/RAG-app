@@ -1,45 +1,14 @@
-import fitz
-import re
+from ingestion.Extractors.docling_loader import load_pdf_pages as load_docling_pdf_pages
+from ingestion.Extractors.pymupdf_loader import load_pdf_pages as load_pymupdf_pdf_pages
 
-def extract_text(pdf_path):
 
-    doc = fitz.open(pdf_path)
+def extract_text(pdf_path, loader="pymupdf"):
+    loader = (loader or "pymupdf").lower()
 
-    pages_data = []
-    current_section = "Introduction"
+    if loader in {"pymupdf", "fitz", "fast"}:
+        return load_pymupdf_pdf_pages(pdf_path)
 
-    for i, page in enumerate(doc):
-        page_num = i + 1
-        lines = page.get_text().split("\n")
-        current_chunk_lines = []
+    if loader in {"docling", "structured"}:
+        return load_docling_pdf_pages(pdf_path)
 
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
-                continue
-
-            # Check if this line is a heading (e.g., Chapter 1: ... or 1.1 ...)
-            if re.match(r"^(Chapter \d+:\s*.+|\d+\.\d+\s*.+)$", stripped):
-                # Save previous accumulated lines under the previous section
-                if current_chunk_lines:
-                    pages_data.append({
-                        "text": "\n".join(current_chunk_lines),
-                        "page": page_num,
-                        "section": current_section,
-                        "source": pdf_path
-                    })
-                    current_chunk_lines = []
-                current_section = stripped
-
-            current_chunk_lines.append(line)
-
-        # Append any remaining lines of the page
-        if current_chunk_lines:
-            pages_data.append({
-                "text": "\n".join(current_chunk_lines),
-                "page": page_num,
-                "section": current_section,
-                "source": pdf_path
-            })
-
-    return pages_data
+    raise ValueError(f"Unsupported PDF loader: {loader}")

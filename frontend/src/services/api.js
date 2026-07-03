@@ -36,12 +36,13 @@ export const fetchSession = async (sessionId) => {
   return response.json();
 };
 
-export const uploadDocument = async (file, tags, author, collectionId) => {
+export const uploadDocument = async (file, tags, author, collectionId, loader = 'pymupdf') => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('tags', tags);
   formData.append('author', author);
   formData.append('collectionId', collectionId);
+  formData.append('loader', loader);
 
   const response = await fetch(`${BASE_URL}/upload`, {
     method: 'POST',

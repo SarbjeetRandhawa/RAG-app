@@ -29,6 +29,7 @@ export default function DocUploadView({
   const [metaTags, setMetaTags] = useState('Research, Architecture, VectorStore');
   const [metaAuthor, setMetaAuthor] = useState('Sarbjeet Randhawa');
   const [targetCollection, setTargetCollection] = useState('col1');
+  const [pdfLoader, setPdfLoader] = useState('pymupdf');
 
   const fileInputRef = useRef(null);
 
@@ -66,7 +67,7 @@ export default function DocUploadView({
       setUploadProgress(50);
       setIngestStage('embedding');
       
-      const uploadedDoc = await uploadDocument(file, metaTags, metaAuthor, targetCollection);
+      const uploadedDoc = await uploadDocument(file, metaTags, metaAuthor, targetCollection, pdfLoader);
       
       setUploadProgress(100);
       setIngestStage('done');
@@ -304,6 +305,19 @@ export default function DocUploadView({
 
             {/* Author */}
             <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">PDF Extraction Loader</label>
+              <select
+                value={pdfLoader}
+                onChange={(e) => setPdfLoader(e.target.value)}
+                className="w-full text-[12px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-lg outline-none cursor-pointer text-slate-800 dark:text-slate-200 focus:border-brand-400 dark:focus:border-brand-500"
+              >
+                <option value="pymupdf">PyMuPDF Loader - Fast Default</option>
+                <option value="docling">Docling Loader - Structured Optional</option>
+              </select>
+            </div>
+
+            {/* Author */}
+            <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Document Owner</label>
               <input
                 type="text"
@@ -329,7 +343,7 @@ export default function DocUploadView({
                 <Database className="w-3.5 h-3.5 text-brand-600 mr-1.5" />
                 OCR & Parsing Pipeline
               </p>
-              By default, document contents are extracted via PyPDF, formatted, split using recursive token chunkers, embedded, and cataloged.
+              By default, document contents are extracted via PyMuPDF. Docling can be selected for structured parsing before the same cleaning, chunking, embedding, and Qdrant indexing steps.
             </div>
           </div>
         </div>

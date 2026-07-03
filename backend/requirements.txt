@@ -12,3 +12,4 @@ google-genai
 llama-cpp-python
 SQLAlchemy
 psycopg2-binary
+docling

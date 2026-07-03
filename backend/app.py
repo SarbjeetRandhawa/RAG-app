@@ -54,9 +54,9 @@ def create_collection():
     )
 
 
-def ingest_document(pdf_path=PDF_PATH, document_id="data", filename="data.pdf"):
+def ingest_document(pdf_path=PDF_PATH, document_id="data", filename="data.pdf", loader="pymupdf"):
 
-    pages_data = extract_text(pdf_path)
+    pages_data = extract_text(pdf_path, loader=loader)
 
     pages_data = clean_text(pages_data)
 
