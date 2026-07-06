@@ -7,6 +7,266 @@ from generation.generator import GenerationService
 from generation.memory import build_memory_context, compact_memory, rewrite_query_with_memory
 from Reflection.Reflector import Reflector
 
+# Import guardrails from new paths
+from guardrails.input.input_guard import InputGuard
+from guardrails.security.toxicity_guard import ToxicityGuard
+from guardrails.security.pii_guard import PIIGuard
+from guardrails.security.prompt_injection import PromptInjectionGuard
+from guardrails.routing.query_classifier import classify_query
+from guardrails.retrieval.no_context_guard import check_no_context
+from guardrails.retrieval.relevance_guard import filter_relevant_chunks
+from guardrails.generation.confidence import calculate_confidence
+from guardrails.generation.output_guard import check_output_formatting
+from guardrails.generation.faithfulness_guard import check_faithfulness
+from guardrails.generation.groundedness_guard import GroundednessGuard
+from guardrails.generation.citation_guard import CitationGuard
+
+
+def _run_input_guards(query: str, model: str, memory: dict):
+    input_guard = InputGuard()
+    input_result = input_guard.validate(query)
+    if not input_result.is_valid:
+        ans = f"**[Input Guard]** {input_result.message}"
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": "0.0s", "confidence": 0, "model": model},
+            "pipeline_data": {"error": "Input guard triggered"},
+            "memory": memory,
+            "total_time": 0.0
+        }
+        return "STOP"
+    return "CONTINUE"
+
+
+def _run_security_guards(query: str, model: str, memory: dict):
+    tox_safe, tox_msg = ToxicityGuard().check_toxicity(query)
+    if not tox_safe:
+        from generation.groq import complete_with_groq
+        try:
+            refusal_sys_prompt = (
+                "You are a helpful and polite AI assistant.\n"
+                "The user just submitted a request that violates safety policies.\n"
+                "Write a concise, firm, but polite refusal message explaining that you cannot fulfill this request."
+            )
+            refusal_user = f"The unsafe request was: '{query}'\nPlease write the refusal response."
+            llm_tox_msg = complete_with_groq(refusal_sys_prompt, refusal_user, max_tokens=100)
+        except Exception:
+            llm_tox_msg = "I cannot fulfill this request as it violates safety and content guidelines."
+            
+        ans = f"**[Toxicity Guard]** {llm_tox_msg}"
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": "0.0s", "confidence": 0, "model": model},
+            "pipeline_data": {"error": f"Toxicity guard triggered: {tox_msg}"},
+            "memory": memory,
+            "total_time": 0.0
+        }
+        return "STOP"
+
+    pii_safe, pii_msg = PIIGuard().check_pii(query)
+    if not pii_safe:
+        ans = f"**[PII Guard]** {pii_msg}"
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": "0.0s", "confidence": 0, "model": model},
+            "pipeline_data": {"error": "PII guard triggered"},
+            "memory": memory,
+            "total_time": 0.0
+        }
+        return "STOP"
+        
+    inj_safe, inj_msg = PromptInjectionGuard().check_injection(query)
+    if not inj_safe:
+        ans = f"**[Prompt Injection Guard]** {inj_msg}"
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": "0.0s", "confidence": 0, "model": model},
+            "pipeline_data": {"error": "Prompt injection guard triggered"},
+            "memory": memory,
+            "total_time": 0.0
+        }
+        return "STOP"
+    return "CONTINUE"
+
+
+def _run_classification(raw_query: str, query_latency: float, pipeline_data: dict, model: str, memory: dict, class_start_time: float):
+    query_intent = classify_query(raw_query)
+    class_latency = (time.time() - class_start_time) * 1000
+    pipeline_data["classification"] = {
+        "latency": f"{class_latency:.1f}ms",
+        "status": "success",
+        "details": {"intent": query_intent}
+    }
+    
+    if query_intent == "CHITCHAT":
+        ans = "I'm a RAG assistant meant to answer questions based on my knowledge base. How can I help you today?"
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": f"{(query_latency + class_latency)/1000.0:.2f}s", "confidence": 100, "model": model},
+            "pipeline_data": pipeline_data,
+            "memory": memory,
+            "total_time": (query_latency + class_latency)/1000.0
+        }
+        return "STOP", query_intent, class_latency
+        
+    if query_intent == "GENERAL_KNOWLEDGE":
+        from generation.groq import complete_with_groq
+        try:
+            ans = complete_with_groq("You are a helpful assistant.", raw_query, max_tokens=150)
+        except Exception:
+            ans = "I'm an assistant focused on your documents, but I can't answer that right now."
+            
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": f"{(query_latency + class_latency)/1000.0:.2f}s", "confidence": 95, "model": "groq"},
+            "pipeline_data": pipeline_data,
+            "memory": memory,
+            "total_time": (query_latency + class_latency)/1000.0
+        }
+        return "STOP", query_intent, class_latency
+        
+    return "CONTINUE", query_intent, class_latency
+
+
+def _run_retrieval(rewritten_query: str, client: QdrantClient, collection_name: str, pipeline_data: dict, ret_start_time: float):
+    retriever = RetrieverService(client, collection_name)
+    retrieved_chunks = retriever.retrieve(rewritten_query)
+    ret_latency = (time.time() - ret_start_time) * 1000
+    
+    pipeline_data["embedding"] = {
+        "latency": f"{ret_latency * 0.6:.1f}ms",
+        "status": "success",
+        "details": {"model": "cohere-embed-english-v3.0", "dimensions": 1024}
+    }
+    pipeline_data["vector"] = {
+        "latency": f"{ret_latency * 0.4:.1f}ms",
+        "status": "success",
+        "details": {"collection": collection_name, "hitsFound": len(retrieved_chunks)}
+    }
+    return retrieved_chunks, ret_latency
+
+
+def _run_rerank_and_context_guards(rewritten_query: str, retrieved_chunks: list, pipeline_data: dict, model: str, memory: dict, rerank_start_time: float):
+    reranked_results = rerank(rewritten_query, retrieved_chunks)
+    rerank_latency = (time.time() - rerank_start_time) * 1000
+    
+    if check_no_context(reranked_results, threshold=0.005):
+        ans = "**[No-Context Guard]** I don't have enough context in my knowledge base to answer this question accurately."
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": f"{rerank_latency/1000.0:.2f}s", "confidence": 0, "model": model},
+            "pipeline_data": pipeline_data,
+            "memory": memory,
+            "total_time": rerank_latency / 1000.0
+        }
+        return "STOP", [], None, rerank_latency
+
+    filtered_chunks = filter_relevant_chunks(reranked_results, threshold=0.008)
+    confidence_data = calculate_confidence(reranked_results, filtered_chunks)
+    
+    top_score = reranked_results[0].rerank_score if reranked_results else 0.0
+    pipeline_data["rerank"] = {
+        "latency": f"{rerank_latency:.1f}ms",
+        "status": "success",
+        "details": {
+            "model": "rrf-passthrough", 
+            "topMatchScore": float(f"{top_score:.4f}"),
+            "chunksPassedRelevance": len(filtered_chunks)
+        }
+    }
+    
+    if not filtered_chunks:
+        ans = "**[Relevance Guard]** I couldn't find highly relevant information to answer your question."
+        yield ans
+        yield {
+            "answer": ans,
+            "citations": [],
+            "stats": {"latency": f"{rerank_latency/1000.0:.2f}s", "confidence": confidence_data["score"] * 100, "model": model},
+            "pipeline_data": pipeline_data,
+            "memory": memory,
+            "total_time": rerank_latency / 1000.0
+        }
+        return "STOP", [], None, rerank_latency
+        
+    return "CONTINUE", filtered_chunks, confidence_data, rerank_latency
+
+
+def _run_generation(rewritten_query: str, filtered_chunks: list, memory_context: dict, max_context_tokens: int, pipeline_data: dict, gen_start_time: float, model: str):
+    generator = GenerationService(max_context_tokens)
+    answer_stream = generator.generate(rewritten_query, filtered_chunks, memory_context)
+    
+    full_answer = ""
+    for chunk in answer_stream:
+        full_answer += chunk
+        yield chunk
+
+    gen_latency = (time.time() - gen_start_time) * 1000
+    
+    if not check_output_formatting(full_answer):
+        full_answer = "I apologize, but I was unable to generate a properly formatted response."
+        
+    pipeline_data["prompt"] = {
+        "latency": "5.0ms",
+        "status": "success",
+        "details": {
+            "contextLength": "estimated context tokens",
+            "systemPromptLength": "350 tokens",
+            "memorySummaryIncluded": bool(memory_context["summary"]),
+            "recentMessagesIncluded": memory_context["turns_used"]
+        }
+    }
+    pipeline_data["llm"] = {
+        "latency": f"{gen_latency/1000.0:.3f}s",
+        "status": "success",
+        "details": {"tokensPerSec": "45 t/s", "model": model}
+    }
+    
+    return full_answer, gen_latency
+
+
+def _run_post_gen_guards(raw_query: str, filtered_chunks: list, final_answer: str, pipeline_data: dict, t0_faith: float):
+    combined_context = "\n".join([rc.chunk.text for rc in filtered_chunks[:3]])
+    faithfulness_res = check_faithfulness(raw_query, combined_context, final_answer)
+    faith_latency = (time.time() - t0_faith) * 1000
+    
+    pipeline_data["faithfulness"] = {
+        "latency": f"{faith_latency:.1f}ms",
+        "status": "success" if faithfulness_res["is_faithful"] else "failed",
+        "details": {"reason": faithfulness_res["reason"]}
+    }
+
+    t0_ground = time.time()
+    grounded_res = GroundednessGuard().check_groundedness(final_answer, combined_context)
+    ground_latency = (time.time() - t0_ground) * 1000
+    
+    pipeline_data["groundedness"] = {
+        "latency": f"{ground_latency:.1f}ms",
+        "status": "success" if grounded_res["is_grounded"] else "failed",
+        "details": {"reason": grounded_res["reason"]}
+    }
+    
+    cit_safe, cit_msg = CitationGuard().check_citations(final_answer)
+    pipeline_data["citation_check"] = {
+        "status": "success" if cit_safe else "warning",
+        "details": {"message": cit_msg}
+    }
+    return faith_latency, ground_latency
+
+
 def run_chat_pipeline(
     query: str, 
     client: QdrantClient, 
@@ -17,9 +277,16 @@ def run_chat_pipeline(
     reflect: bool = True
 ):
     pipeline_data = {}
+    
+    # 1. Pre-Retrieval Guards
+    if (yield from _run_input_guards(query, model, memory)) == "STOP":
+        return
+    if (yield from _run_security_guards(query, model, memory)) == "STOP":
+        return
+
     memory_context = build_memory_context(memory)
     
-    # 1. Query stage
+    # 2. Query stage & Routing
     t0 = time.time()
     raw_query = query
     query_latency = (time.time() - t0) * 1000
@@ -29,7 +296,11 @@ def run_chat_pipeline(
         "details": {"rawQuery": raw_query}
     }
     
-    # 2. Query Rewrite
+    class_status, query_intent, class_latency = yield from _run_classification(raw_query, query_latency, pipeline_data, model, memory, time.time())
+    if class_status == "STOP":
+        return
+
+    # 3. Query Rewrite
     t0 = time.time()
     rewritten_query = rewrite_query_with_memory(raw_query, memory_context)
     rewrite_latency = (time.time() - t0) * 1000
@@ -47,77 +318,31 @@ def run_chat_pipeline(
         }
     }
     
-    # 3 & 4. Embedding & Vector Search
-    t0 = time.time()
-    retriever = RetrieverService(client, collection_name)
-    retrieved_chunks = retriever.retrieve(rewritten_query)
-    ret_latency = (time.time() - t0) * 1000
+    # 4. Retrieval
+    retrieved_chunks, ret_latency = _run_retrieval(rewritten_query, client, collection_name, pipeline_data, time.time())
     
-    pipeline_data["embedding"] = {
-        "latency": f"{ret_latency * 0.6:.1f}ms",
-        "status": "success",
-        "details": {"model": "cohere-embed-english-v3.0", "dimensions": 1024}
-    }
-    pipeline_data["vector"] = {
-        "latency": f"{ret_latency * 0.4:.1f}ms",
-        "status": "success",
-        "details": {"collection": collection_name, "hitsFound": len(retrieved_chunks)}
-    }
-    
-    # 5. Reranker — Enabled using Cohere API
-    t0 = time.time()
-    reranked_results = rerank(rewritten_query, retrieved_chunks)
-    rerank_latency = (time.time() - t0) * 1000
-    top_score = reranked_results[0].rerank_score if reranked_results else 0.0
+    # 5. Reranking and Context Guards
+    rerank_status, filtered_chunks, confidence_data, rerank_latency = yield from _run_rerank_and_context_guards(
+        rewritten_query, retrieved_chunks, pipeline_data, model, memory, time.time()
+    )
+    if rerank_status == "STOP":
+        return
 
-    pipeline_data["rerank"] = {
-        "latency": f"{rerank_latency:.1f}ms",
-        "status": "success",
-        "details": {"model": "cohere-rerank-english-v3.0", "topMatchScore": float(f"{top_score:.4f}")}
-    }
+    # 6. Generation
+    gen_result = yield from _run_generation(rewritten_query, filtered_chunks, memory_context, max_context_tokens, pipeline_data, time.time(), model)
+    full_answer, gen_latency = gen_result
     
-    # 6 & 7. Prompt Builder & LLM Generator
-    t0 = time.time()
-    generator = GenerationService(max_context_tokens)
-    answer_stream = generator.generate(rewritten_query, reranked_results, memory_context)
-    
-    gen_latency_start = time.time()
-    full_answer = ""
-    for chunk in answer_stream:
-        full_answer += chunk
-        yield chunk
-
-    gen_latency = (time.time() - gen_latency_start) * 1000
-    
-    pipeline_data["prompt"] = {
-        "latency": "5.0ms",
-        "status": "success",
-        "details": {
-            "contextLength": "estimated context tokens",
-            "systemPromptLength": "350 tokens",
-            "memorySummaryIncluded": bool(memory_context["summary"]),
-            "recentMessagesIncluded": memory_context["turns_used"]
-        }
-    }
-    pipeline_data["llm"] = {
-        "latency": f"{gen_latency/1000.0:.3f}s",
-        "status": "success",
-        "details": {"tokensPerSec": "45 t/s", "model": model}
-    }
-    
-    # 8. Reflection (optional)
+    # 7. Reflection
     t0 = time.time()
     reflector = Reflector(enabled=reflect)
     try:
-        final_answer = reflector.reflect(raw_query, reranked_results, full_answer)
+        final_answer = reflector.reflect(raw_query, filtered_chunks, full_answer)
         self_critique_passed = True if final_answer else False
         reflection_status = "success"
     except Exception:
-        # on any unexpected error, fall back to the original full_answer
         final_answer = full_answer
         self_critique_passed = False
         reflection_status = "failed"
-
     reflection_latency = (time.time() - t0) * 1000
     pipeline_data["reflection"] = {
         "latency": f"{reflection_latency:.1f}ms",
@@ -125,9 +350,12 @@ def run_chat_pipeline(
         "details": {"model": "reflection-llm", "selfCritiquePassed": self_critique_passed}
     }
     
+    # 8. Post-Generation Guards
+    faith_latency, ground_latency = _run_post_gen_guards(raw_query, filtered_chunks, final_answer, pipeline_data, time.time())
+    
     # 9. Citations
     citations = []
-    for rc in reranked_results[:5]:
+    for rc in filtered_chunks[:5]:
         citations.append({
             "fileName": rc.chunk.source,
             "page": rc.chunk.page,
@@ -140,16 +368,14 @@ def run_chat_pipeline(
     pipeline_data["final"] = {
         "latency": "5ms",
         "status": "success",
-        "details": {"citationCount": len(citations), "confidenceScore": 0.95}
+        "details": {"citationCount": len(citations), "confidenceScore": confidence_data["score"]}
     }
     
     total_latency_sec = sum([
-        query_latency, rewrite_latency, ret_latency,
-        # rerank_latency is 0.0 (reranker disabled)
-        rerank_latency, gen_latency, reflection_latency
+        query_latency, class_latency, rewrite_latency, ret_latency,
+        rerank_latency, gen_latency, reflection_latency, faith_latency, ground_latency
     ]) / 1000.0
 
-    # use the reflected final answer when updating memory and returning
     updated_memory = compact_memory(memory, raw_query, final_answer)
 
     yield {
@@ -157,7 +383,7 @@ def run_chat_pipeline(
         "citations": citations,
         "stats": {
             "latency": f"{total_latency_sec:.2f}s",
-            "confidence": 95,
+            "confidence": confidence_data["score"] * 100,
             "model": model
         },
         "pipeline_data": pipeline_data,

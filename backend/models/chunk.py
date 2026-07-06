@@ -24,3 +24,4 @@ class RetrievedChunk:
     chunk: Chunk
     vector_score: float
     rerank_score: float
+    rrf_score: float = 0.0
