@@ -22,6 +22,7 @@ class ProcessedChunk:
 @dataclass
 class RetrievedChunk:
     chunk: Chunk
-    vector_score: float
-    rerank_score: float
+    vector_score: float = 0.0
+    rerank_score: float = 0.0
+    bm25_score: float = 0.0
     rrf_score: float = 0.0

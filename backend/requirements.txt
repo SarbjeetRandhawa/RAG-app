@@ -13,3 +13,4 @@ llama-cpp-python
 SQLAlchemy
 psycopg2-binary
 docling
+rank-bm25

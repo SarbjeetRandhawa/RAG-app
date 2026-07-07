@@ -7,7 +7,6 @@ from ingestion.extract import extract_text
 from ingestion.clean import clean_text
 from ingestion.chunk import chunk_text
 from ingestion.embed import get_embeddings
-from models.reranker import rerank
 from models.chunk import Chunk, RetrievedChunk
 from retrieval.retriever import RetrieverService
 from generation.generator import GenerationService
@@ -124,6 +123,9 @@ def ingest_document(pdf_path=PDF_PATH, document_id="data", filename="data.pdf", 
         collection_name=COLLECTION_NAME,
         points=points
     )
+
+    from ingestion.bm25_index import build_and_save_bm25
+    build_and_save_bm25(client, COLLECTION_NAME)
 
     logging.info(
         f"Inserted {len(points)} chunks"
