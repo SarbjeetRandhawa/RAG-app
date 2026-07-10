@@ -382,6 +382,19 @@ def run_chat_pipeline(
 
     updated_memory = compact_memory(memory, raw_query, final_answer)
 
+    eval_payload = {
+        "question": raw_query,
+        "answer": final_answer,
+        "metadata": {
+            "retrieval_time": ret_latency,
+            "rerank_time": rerank_latency,
+            "generation_time": gen_latency,
+            "total_time": total_latency_sec * 1000,
+            "input_tokens": 0,
+            "output_tokens": 0
+        }
+    }
+
     yield {
         "answer": final_answer,
         "citations": citations,
@@ -392,5 +405,6 @@ def run_chat_pipeline(
         },
         "pipeline_data": pipeline_data,
         "memory": updated_memory,
-        "total_time": total_latency_sec
+        "total_time": total_latency_sec,
+        "eval_payload": eval_payload
     }

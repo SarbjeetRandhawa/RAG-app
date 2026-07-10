@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
+import EvaluationCard from './EvaluationCard';
 import { 
   Send, 
   Paperclip, 
@@ -222,6 +223,8 @@ export default function ChatView({
                               </button>
                             </div>
                           </div>
+
+                          {m.messageId && <EvaluationCard messageId={m.messageId} />}
                         </div>
                       )}
                     </div>

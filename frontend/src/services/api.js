@@ -117,3 +117,9 @@ export const checkHealth = async () => {
     return false;
   }
 };
+
+export const fetchEvaluation = async (messageId) => {
+  const response = await fetch(`${BASE_URL}/evaluate/${messageId}`);
+  if (!response.ok) throw new Error('Failed to fetch evaluation');
+  return response.json();
+};

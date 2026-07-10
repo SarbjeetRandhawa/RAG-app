@@ -14,3 +14,4 @@ SQLAlchemy
 psycopg2-binary
 docling
 rank-bm25
+deepeval

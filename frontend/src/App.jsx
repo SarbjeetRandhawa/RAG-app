@@ -238,7 +238,8 @@ export default function App() {
             ...m, 
             content: accumulatedContent,
             stats: finalResponse.stats,
-            citations: finalResponse.citations
+            citations: finalResponse.citations,
+            messageId: finalResponse.messageId
           } : m)
         };
       });

@@ -6,7 +6,7 @@ import json
 import logging
 from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from qdrant_client import QdrantClient
@@ -14,6 +14,11 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 # Ensure backend directory is in path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from evaluation.deepeval_runner import run_evaluation, evaluation_results
+
+ENABLE_DEEPEVAL = os.environ.get("ENABLE_DEEPEVAL", "true").lower() == "true"
+
 
 # Imports from existing proper pipeline modules/code structure
 from app import create_collection, ingest_document, COLLECTION_NAME, client
@@ -302,7 +307,7 @@ def get_analytics():
     }
 
 @app.post("/api/chat")
-def chat_query(req: ChatRequest):
+def chat_query(req: ChatRequest, background_tasks: BackgroundTasks):
     def generate():
         try:
             session_id = req.sessionId
@@ -375,12 +380,25 @@ def chat_query(req: ChatRequest):
                     )
                     update_session_memory(session_id, item.get("memory", {}))
                     final_data["sessionId"] = session_id
+                    
+                    message_id = str(uuid.uuid4())
+                    final_data["messageId"] = message_id
+                    if ENABLE_DEEPEVAL and "eval_payload" in item:
+                        background_tasks.add_task(run_evaluation, message_id, item["eval_payload"])
+                    
                     yield json.dumps({"type": "final", "data": final_data}) + "\n"
         except Exception as e:
             logging.error(f"Chat execution failed: {e}")
             yield json.dumps({"type": "error", "error": str(e)}) + "\n"
             
-    return StreamingResponse(generate(), media_type="application/x-ndjson")
+    return StreamingResponse(generate(), media_type="application/x-ndjson", background=background_tasks)
+
+@app.get("/api/evaluate/{message_id}")
+def get_evaluation(message_id: str):
+    if message_id not in evaluation_results:
+        return {"status": "not_found"}
+    return evaluation_results[message_id]
+
 
 if __name__ == "__main__":
     import uvicorn
