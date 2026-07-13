@@ -243,31 +243,38 @@ def _run_generation(rewritten_query: str, filtered_chunks: list, memory_context:
 
 
 def _run_post_gen_guards(raw_query: str, filtered_chunks: list, final_answer: str, pipeline_data: dict, t0_faith: float):
+    import concurrent.futures
     combined_context = "\n".join([rc.chunk.text for rc in filtered_chunks[:3]])
-    faithfulness_res = check_faithfulness(raw_query, combined_context, final_answer)
-    faith_latency = (time.time() - t0_faith) * 1000
     
-    pipeline_data["faithfulness"] = {
-        "latency": f"{faith_latency:.1f}ms",
-        "status": "success" if faithfulness_res["is_faithful"] else "failed",
-        "details": {"reason": faithfulness_res["reason"]}
-    }
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_faith = executor.submit(check_faithfulness, raw_query, combined_context, final_answer)
+        future_ground = executor.submit(GroundednessGuard().check_groundedness, final_answer, combined_context)
+        future_cit = executor.submit(CitationGuard().check_citations, final_answer)
+        
+        faithfulness_res = future_faith.result()
+        faith_latency = (time.time() - t0_faith) * 1000
+        
+        pipeline_data["faithfulness"] = {
+            "latency": f"{faith_latency:.1f}ms",
+            "status": "success" if faithfulness_res["is_faithful"] else "failed",
+            "details": {"reason": faithfulness_res["reason"]}
+        }
 
-    t0_ground = time.time()
-    grounded_res = GroundednessGuard().check_groundedness(final_answer, combined_context)
-    ground_latency = (time.time() - t0_ground) * 1000
-    
-    pipeline_data["groundedness"] = {
-        "latency": f"{ground_latency:.1f}ms",
-        "status": "success" if grounded_res["is_grounded"] else "failed",
-        "details": {"reason": grounded_res["reason"]}
-    }
-    
-    cit_safe, cit_msg = CitationGuard().check_citations(final_answer)
-    pipeline_data["citation_check"] = {
-        "status": "success" if cit_safe else "warning",
-        "details": {"message": cit_msg}
-    }
+        grounded_res = future_ground.result()
+        ground_latency = (time.time() - t0_faith) * 1000
+        
+        pipeline_data["groundedness"] = {
+            "latency": f"{ground_latency:.1f}ms",
+            "status": "success" if grounded_res["is_grounded"] else "failed",
+            "details": {"reason": grounded_res["reason"]}
+        }
+        
+        cit_safe, cit_msg = future_cit.result()
+        pipeline_data["citation_check"] = {
+            "status": "success" if cit_safe else "warning",
+            "details": {"message": cit_msg}
+        }
+        
     return faith_latency, ground_latency
 
 
