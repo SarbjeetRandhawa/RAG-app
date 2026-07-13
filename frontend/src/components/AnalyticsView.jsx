@@ -275,6 +275,14 @@ export default function AnalyticsView({ documents, analyticsData }) {
                         onMouseLeave={() => setHoveredPoint(null)}
                         className="cursor-pointer"
                       >
+                        {/* Invisible hover field for better UX */}
+                        <rect 
+                          x={p.x - 30} 
+                          y="0" 
+                          width="60" 
+                          height="240" 
+                          fill="transparent" 
+                        />
                         <circle 
                           cx={p.x} 
                           cy={p.y} 

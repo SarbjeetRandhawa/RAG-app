@@ -7,6 +7,7 @@ import ChatView from './components/ChatView';
 import DocUploadView from './components/DocUploadView';
 import AnalyticsView from './components/AnalyticsView';
 import SettingsView from './components/SettingsView';
+import CachePanelView from './components/CachePanelView';
 
 export default function App() {
   // Theme State
@@ -236,10 +237,11 @@ export default function App() {
           ...prev,
           [currentChatId]: chatMsgs.map(m => m.id === msgId ? { 
             ...m, 
-            content: accumulatedContent,
+            content: finalResponse.answer || accumulatedContent,
             stats: finalResponse.stats,
             citations: finalResponse.citations,
-            messageId: finalResponse.messageId
+            messageId: finalResponse.messageId,
+            pipelineData: finalResponse.pipeline_data || null
           } : m)
         };
       });
@@ -396,6 +398,10 @@ export default function App() {
               setTemperature={setTemperature}
               onSaveSettings={handleSaveSettings}
             />
+          )}
+
+          {activeView === 'cache' && (
+            <CachePanelView />
           )}
         </div>
 

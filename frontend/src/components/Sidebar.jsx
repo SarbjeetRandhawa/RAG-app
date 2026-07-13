@@ -13,7 +13,8 @@ import {
   Cpu,
   User,
   ShieldCheck,
-  Compass
+  Compass,
+  Server
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -33,6 +34,7 @@ export default function Sidebar({
     { id: 'documents', label: 'Documents', icon: Files },
     { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
     { id: 'settings', label: 'System Settings', icon: Settings },
+    { id: 'cache', label: 'Cache Developer Panel', icon: Server },
   ];
 
   const filteredHistory = chatHistory.filter(chat => 

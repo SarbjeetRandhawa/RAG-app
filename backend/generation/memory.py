@@ -83,7 +83,7 @@ def compact_memory(previous_memory, user_query, assistant_answer):
     if len(messages) <= SUMMARY_TRIGGER_LIMIT:
         return {
             "summary": existing_summary,
-            "recentMessages": messages,
+            "messages": messages,
             "recentCount": len(messages),
             "summarizedCount": 0
         }
@@ -114,7 +114,7 @@ Updated compact summary:
 
     return {
         "summary": updated_summary.strip(),
-        "recentMessages": recent_messages,
+        "messages": recent_messages,
         "recentCount": len(recent_messages),
         "summarizedCount": len(messages_to_summarize)
     }

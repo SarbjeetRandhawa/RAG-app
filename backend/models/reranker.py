@@ -32,7 +32,10 @@ def rrf_fusion(vector_chunks: list[RetrievedChunk], bm25_chunks: list[RetrievedC
     fused = sorted(list(chunk_map.values()), key=lambda c: c.rrf_score, reverse=True)
     return fused[:top_n]
 
-def cohere_rerank(query: str, chunks: list[RetrievedChunk], top_n: int = 10) -> list[RetrievedChunk]:
+from cache.decorators import cache_result
+
+@cache_result(namespace="rerank", ttl=43200)
+def cohere_rerank(query: str, chunks: list[RetrievedChunk], top_n: int = 20) -> list[RetrievedChunk]:
     """Call Cohere rerank-english-v3.0 API. Sets rerank_score from Cohere relevance_score."""
     if not chunks:
         return []

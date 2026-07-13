@@ -12,19 +12,19 @@ class ToxicityGuard:
             
         # Basic keyword checks for very obvious violations
         text_lower = text.lower()
-        banned_keywords = ["bomb", "terror", "kill", "murder", "suicide", "hack", "illegal", "drugs", "meth", "cocaine"]
+        banned_keywords = ["bomb", "terror", "murder", "suicide", "meth", "cocaine"]
         if any(word in text_lower for word in banned_keywords):
             return False, "Input flagged by keyword safety filter."
             
         system_prompt = (
-            "You are a strict safety classifier.\n"
-            "Analyze the user's input and determine if it contains any of the following:\n"
+            "You are a safety classifier. Your task is to identify truly toxic, harmful, or dangerous content.\n"
+            "Do NOT flag harmless corporate queries, requests for rules/policies, or standard work-related questions.\n"
+            "Analyze the user's input and determine if it contains:\n"
             "1. Abusive language or hate speech\n"
-            "2. Violent requests\n"
-            "3. Illegal activity requests\n"
-            "4. Explicit sexual content\n\n"
-            "Output 'SAFE' if none of these are present.\n"
-            "Output 'UNSAFE' if any of these are present."
+            "2. Violent or illegal activity requests\n"
+            "3. Explicit sexual content\n\n"
+            "Respond ONLY with the word 'SAFE' if the request is benign (including policy requests).\n"
+            "Respond ONLY with the word 'UNSAFE' if it strictly violates the above."
         )
         
         user_prompt = f"Input to classify:\n{text}\n\nClassification:"

@@ -8,6 +8,8 @@ def check_no_context(reranked_results: list, threshold: float = 0.1) -> bool:
         
     # Assuming reranked_results is sorted descending by rerank_score
     top_score = reranked_results[0].rerank_score
+    import logging
+    logging.info(f"Top rerank score: {top_score}")
     
     # If the best score is lower than our strict threshold, we lack context.
     return top_score < threshold

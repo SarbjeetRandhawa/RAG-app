@@ -123,3 +123,18 @@ export const fetchEvaluation = async (messageId) => {
   if (!response.ok) throw new Error('Failed to fetch evaluation');
   return response.json();
 };
+
+export const fetchCacheStats = async () => {
+  const response = await fetch(`${BASE_URL}/cache/stats`);
+  if (!response.ok) throw new Error('Failed to fetch cache stats');
+  return response.json();
+};
+
+export const clearCacheNamespace = async (namespace) => {
+  const response = await fetch(`${BASE_URL}/cache/clear/${namespace}`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error(`Failed to clear cache namespace: ${namespace}`);
+  return response.json();
+};
+

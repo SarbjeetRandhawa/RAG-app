@@ -19,6 +19,12 @@ from evaluation.deepeval_runner import run_evaluation, evaluation_results
 
 ENABLE_DEEPEVAL = os.environ.get("ENABLE_DEEPEVAL", "true").lower() == "true"
 
+from cache.cache_manager import cache_manager
+from cache.statistics import cache_stats
+from cache.key_builder import build_response_key
+from cache.semantic_cache import semantic_cache
+from ingestion.embed import get_embeddings
+from cache.redis_client import redis_client as redis_client_instance
 
 # Imports from existing proper pipeline modules/code structure
 from app import create_collection, ingest_document, COLLECTION_NAME, client
@@ -37,6 +43,7 @@ from db import (
 )
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="RAG Backend API")
 
@@ -118,6 +125,9 @@ class CreateSessionRequest(BaseModel):
 def startup_event():
     init_db()
     create_collection()
+    # Load the semantic embedding index from Redis on startup
+    if redis_client_instance.is_available():
+        semantic_cache.load_from_redis(redis_client_instance.get_client())
 
 @app.get("/api/health")
 def health_check():
@@ -126,6 +136,18 @@ def health_check():
         return {"status": "ok", "qdrant": "connected"}
     except Exception as e:
         return {"status": "ok", "qdrant": "disconnected", "error": str(e)}
+
+@app.get("/api/cache/stats")
+def get_cache_stats():
+    return cache_stats.get_stats()
+
+@app.post("/api/cache/clear/{namespace}")
+def clear_cache(namespace: str):
+    if namespace == "all":
+        cache_manager.clear_all()
+    else:
+        cache_manager.clear_namespace(namespace)
+    return {"status": "success"}
 
 @app.get("/api/documents")
 def get_documents():
@@ -321,6 +343,60 @@ def chat_query(req: ChatRequest, background_tasks: BackgroundTasks):
             add_chat_message(session_id, "user", req.query)
 
             request_memory = get_session_memory(session_id)
+
+            # --- Session Cache: fast-path memory load from Redis ---
+            from cache.key_builder import build_session_key
+            session_cache_key = build_session_key(session_id)
+            cached_memory = cache_manager.get(session_cache_key, "session")
+            if cached_memory:
+                request_memory = cached_memory
+            
+            # --- Semantic Cache Lookup ---
+            # 1. Embed the current question
+            # 2. Find a semantically similar cached response (cosine similarity)
+            # 3. On hit, serve immediately without running the pipeline
+            cached_final_data = None
+            response_key = None
+            query_embedding = None
+
+            if cache_manager.is_enabled("response"):
+                try:
+                    query_embedding = get_embeddings([req.query], input_type="search_query")[0]
+                    # Search semantic index for a similar cached question
+                    matched_key = semantic_cache.find_similar(query_embedding)
+                    if matched_key:
+                        cached_final_data = cache_manager.get(matched_key, "response")
+                        response_key = matched_key
+                except Exception as sem_e:
+                    logger.error(f"Semantic cache lookup failed: {sem_e}")
+
+            # Build a fresh key (used when storing a new response)
+            if response_key is None:
+                response_key = build_response_key(req.query, req.model or "gpt-4.1")
+
+            if cached_final_data:
+                yield json.dumps({"type": "chunk", "text": cached_final_data["answer"]}) + "\n"
+                
+                add_chat_message(
+                    session_id,
+                    "assistant",
+                    cached_final_data["answer"],
+                    citations=cached_final_data["citations"],
+                    stats=cached_final_data["stats"]
+                )
+                update_session_memory(session_id, cached_final_data.get("memory", {}))
+                # Update session cache
+                cache_manager.set(session_cache_key, cached_final_data.get("memory", {}), "session", 86400)
+                cached_final_data["sessionId"] = session_id
+                
+                message_id = str(uuid.uuid4())
+                cached_final_data["messageId"] = message_id
+                if ENABLE_DEEPEVAL and "eval_payload" in cached_final_data:
+                    background_tasks.add_task(run_evaluation, message_id, cached_final_data["eval_payload"])
+                
+                yield json.dumps({"type": "final", "data": cached_final_data}) + "\n"
+                return
+
             result_gen = run_chat_pipeline(
                 query=req.query,
                 client=client,
@@ -371,14 +447,35 @@ def chat_query(req: ChatRequest, background_tasks: BackgroundTasks):
                         "pipeline_data": item["pipeline_data"],
                         "memory": item.get("memory", {})
                     }
+                    if "eval_payload" in item:
+                        final_data["eval_payload"] = item["eval_payload"]
+                        
+                    cache_manager.set(response_key, final_data, "response", 86400)
+                    
+                    # Store the embedding in the semantic index for future similarity matching
+                    if query_embedding and cache_manager.is_enabled("response"):
+                        try:
+                            rc = redis_client_instance.get_client() if redis_client_instance.is_available() else None
+                            semantic_cache.store(response_key, req.query, query_embedding, redis_client=rc)
+                        except Exception as sem_store_e:
+                            logger.error(f"Failed to store semantic embedding: {sem_store_e}")
+                    
+                    # Inject intent into stats for persistence
+                    pipe_intent = item.get("pipeline_data", {}).get("classification", {}).get("details", {}).get("intent")
+                    persisted_stats = dict(item["stats"])
+                    if pipe_intent:
+                        persisted_stats["intent"] = pipe_intent
+
                     add_chat_message(
                         session_id,
                         "assistant",
                         item["answer"],
                         citations=item["citations"],
-                        stats=item["stats"]
+                        stats=persisted_stats
                     )
                     update_session_memory(session_id, item.get("memory", {}))
+                    # Update session cache
+                    cache_manager.set(session_cache_key, item.get("memory", {}), "session", 86400)
                     final_data["sessionId"] = session_id
                     
                     message_id = str(uuid.uuid4())

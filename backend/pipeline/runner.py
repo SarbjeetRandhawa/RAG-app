@@ -121,7 +121,7 @@ def _run_classification(raw_query: str, query_latency: float, pipeline_data: dic
     if query_intent == "GENERAL_KNOWLEDGE":
         from generation.groq import complete_with_groq
         try:
-            ans = complete_with_groq("You are a helpful assistant.", raw_query, max_tokens=150)
+            ans = complete_with_groq("You are a helpful assistant.", raw_query, max_tokens=1024)
         except Exception:
             ans = "I'm an assistant focused on your documents, but I can't answer that right now."
             
@@ -166,7 +166,7 @@ def _run_rerank_and_context_guards(rewritten_query: str, retrieved_chunks: list,
     reranked_results = retrieved_chunks
     rerank_latency = (time.time() - rerank_start_time) * 1000
     
-    if check_no_context(reranked_results, threshold=0.005):
+    if check_no_context(reranked_results, threshold=0.001):
         ans = "**[No-Context Guard]** I don't have enough context in my knowledge base to answer this question accurately."
         yield ans
         yield {
@@ -179,7 +179,7 @@ def _run_rerank_and_context_guards(rewritten_query: str, retrieved_chunks: list,
         }
         return "STOP", [], None, rerank_latency
 
-    filtered_chunks = filter_relevant_chunks(reranked_results, threshold=0.008)
+    filtered_chunks = filter_relevant_chunks(reranked_results, threshold=0.001)
     confidence_data = calculate_confidence(reranked_results, filtered_chunks)
     
     top_score = reranked_results[0].rerank_score if reranked_results else 0.0
@@ -275,7 +275,7 @@ def run_chat_pipeline(
     query: str, 
     client: QdrantClient, 
     collection_name: str, 
-    max_context_tokens: int = 6000,
+    max_context_tokens: int = 12000,
     model: str = "gpt-4.1",
     memory: dict | None = None,
     reflect: bool = True

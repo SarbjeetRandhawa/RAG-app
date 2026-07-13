@@ -25,7 +25,8 @@ import {
   ArrowRight,
   RefreshCcw,
   Volume2,
-  BrainCircuit
+  BrainCircuit,
+  Compass
 } from 'lucide-react';
 
 export default function ChatView({ 
@@ -225,6 +226,36 @@ export default function ChatView({
                           </div>
 
                           {m.messageId && <EvaluationCard messageId={m.messageId} />}
+
+                          {/* Query Intent Badge */}
+                          {(() => {
+                            const intent = m.pipelineData?.classification?.details?.intent || m.stats?.intent;
+                            if (!intent) return null;
+                            
+                            const intentConfig = {
+                              'DOMAIN_SPECIFIC': { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0', label: 'Domain Specific', darkBg: 'rgba(6,78,59,0.3)', darkText: '#34d399', darkBorder: '#065f46' },
+                              'GENERAL_KNOWLEDGE': { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe', label: 'General Knowledge', darkBg: 'rgba(30,58,138,0.3)', darkText: '#60a5fa', darkBorder: '#1e3a8a' },
+                              'CHITCHAT': { bg: '#fffbeb', text: '#b45309', border: '#fde68a', label: 'Chit-Chat', darkBg: 'rgba(120,53,15,0.3)', darkText: '#fbbf24', darkBorder: '#78350f' },
+                            };
+                            const config = intentConfig[intent] || { bg: '#f8fafc', text: '#475569', border: '#e2e8f0', label: intent, darkBg: '#1e293b', darkText: '#94a3b8', darkBorder: '#334155' };
+                            
+                            return (
+                              <div className="flex items-center pt-2 mt-1">
+                                <div 
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all"
+                                  style={{ 
+                                    backgroundColor: config.bg,
+                                    color: config.text,
+                                    border: `1px solid ${config.border}`
+                                  }}
+                                >
+                                  <Compass className="w-3 h-3" />
+                                  <span>Intent:</span>
+                                  <span className="uppercase tracking-wide">{config.label}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

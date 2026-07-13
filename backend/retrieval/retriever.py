@@ -6,12 +6,15 @@ from models.chunk import Chunk, RetrievedChunk
 from models.reranker import rrf_fusion, cohere_rerank
 from ingestion.bm25_index import load_bm25
 
+from cache.decorators import cache_result
+
 class RetrieverService:
     def __init__(self, client: QdrantClient, collection_name: str):
         self.client = client
         self.collection_name = collection_name
         self.bm25_index, self.bm25_chunk_ids = load_bm25()
 
+    @cache_result(namespace="retrieval", ttl=43200)
     def retrieve(self, query: str, top_k: int = 30) -> list[RetrievedChunk]:
         # 1. Vector Search
         embed_start = time.time()
@@ -131,7 +134,7 @@ class RetrieverService:
         
         # 4. Cohere Rerank
         rerank_start = time.time()
-        final_chunks = cohere_rerank(query, fused_chunks, top_n=10)
+        final_chunks = cohere_rerank(query, fused_chunks, top_n=20)
         rerank_time = time.time() - rerank_start
 
         logging.info("=" * 80)

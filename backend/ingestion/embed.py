@@ -12,6 +12,9 @@ co = cohere.Client(os.environ.get("COHERE_API_KEY"))
 
 logging.info("Step 2: Cohere client loaded")
 
+from cache.decorators import cache_result
+
+@cache_result(namespace="embedding", ttl=2592000)
 def get_embeddings(chunks, input_type="search_document"):
 
     logging.info(f"Creating embeddings for {len(chunks)} chunks using Cohere")

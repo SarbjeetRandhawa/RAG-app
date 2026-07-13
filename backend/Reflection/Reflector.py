@@ -34,8 +34,6 @@ class Reflector:
                 meta.append(f"page={page}")
             if section:
                 meta.append(f"section={section}")
-            if chunk_id:
-                meta.append(f"chunk_id={chunk_id}")
 
             header = f"--- CHUNK {i} ({', '.join(meta)}) ---"
             lines.append(header)
@@ -60,9 +58,12 @@ class Reflector:
                 draft=draft_answer,
                 chunks=chunks_text,
             )
+            # Estimate tokens of draft_answer (approx 1.5 tokens per word) and add a generous 500 token buffer
+            estimated_tokens = int(len(draft_answer.split()) * 1.5) + 500
+            dynamic_max_tokens = max(1000, estimated_tokens)
 
-            logging.info("Running reflection LLM call to improve draft answer via Groq.")
-            final = complete_with_groq(REFLECTION_SYSTEM_PROMPT, user_prompt, temperature=temperature)
+            logging.info(f"Running reflection LLM call via Groq with max_tokens={dynamic_max_tokens}")
+            final = complete_with_groq(REFLECTION_SYSTEM_PROMPT, user_prompt, temperature=temperature, max_tokens=dynamic_max_tokens)
 
             # The contract: LLM returns only the final improved answer.
             return final.strip()
