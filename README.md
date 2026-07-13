@@ -37,7 +37,6 @@ Follow these instructions to set up the project locally.
 - Python 3.10+
 - Node.js 18+
 - Docker & Docker Compose (highly recommended for running Qdrant, Redis, and Postgres)
-- **Ollama** installed locally (for local model offline inference)
 
 ---
 
@@ -63,14 +62,11 @@ This project relies on several external services. The easiest way to get them ru
    docker run --name rag_postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=Rag_learning -p 5433:5432 -d postgres
    ```
 
-### 2. Local Models Setup (Ollama & Llama.cpp)
+### 2. Local Models Setup (Llama.cpp)
 
 This project features robust support for local, privacy-first inference:
-- **Ollama Integration**: Used for privacy-first, offline local inference. Ensure Ollama is running locally (`http://localhost:11434`) and pull your preferred model (e.g., `llama3` or `llama3.1`):
-  ```bash
-  ollama pull llama3.1
-  ```
 - **Llama.cpp Python**: Used by `offline_client.py` for direct GGUF model execution. Make sure to download a `.gguf` model file into your `backend/models` directory if you plan on running the offline local execution path.
+- **Hugging Face Tokenizer**: The ingestion pipeline utilizes `sentence-transformers/all-MiniLM-L6-v2` for accurate chunk tokenization. This model will be downloaded automatically by the `transformers` library on first run, but ensure you have an active internet connection or pre-download it if working in an offline environment.
 
 ---
 
