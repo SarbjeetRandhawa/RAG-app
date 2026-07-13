@@ -2,6 +2,15 @@
 
 An advanced, production-ready Retrieval-Augmented Generation (RAG) application with an elegant UI and a powerful backend. This system provides highly accurate, hallucination-free answers from your enterprise documents by utilizing multi-stage retrieval, semantic caching, reranking, and self-reflection.
 
+<img width="1362" height="597" alt="image" src="https://github.com/user-attachments/assets/d76f6ac3-a181-4df9-b680-08ddec253e2f" />
+<img width="1344" height="593" alt="image" src="https://github.com/user-attachments/assets/268fc7a8-4cd3-4b44-bea7-62e890aa26c1" />
+<img width="1354" height="597" alt="image" src="https://github.com/user-attachments/assets/cde919e1-b51a-4c0d-a8d1-4a88b9d3347d" />
+<img width="1359" height="603" alt="image" src="https://github.com/user-attachments/assets/d479067d-113d-4c10-9f3c-bdf1028dd2e7" />
+
+
+
+
+
 ## ✨ Key Features
 
 - **Multi-Stage Retrieval Pipeline**: Combines dense vector search (Qdrant) and sparse keyword search (BM25) for robust hybrid retrieval.
