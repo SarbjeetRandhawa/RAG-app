@@ -36,10 +36,45 @@ Follow these instructions to set up the project locally.
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- Redis (running locally on port 6379 or via Docker)
-- Required API Keys: OpenAI (or Azure), Cohere, Groq
+- Docker & Docker Compose (highly recommended for running Qdrant, Redis, and Postgres)
+- **Ollama** installed locally (for local model offline inference)
 
-### 1. Backend Setup
+---
+
+### 1. External Services & Databases Setup
+
+This project relies on several external services. The easiest way to get them running is via Docker:
+
+1. **Qdrant (Vector Database)**:
+   Runs on port `6333`.
+   ```bash
+   docker run -p 6333:6333 -p 6334:6334 -v $(pwd)/qdrant_storage:/qdrant/storage:z qdrant/qdrant
+   ```
+
+2. **Redis (Semantic Cache)**:
+   The backend expects Redis to be running on port `6380` (Database `0`).
+   ```bash
+   docker run -p 6380:6379 -d redis
+   ```
+
+3. **PostgreSQL (Relational Database)**:
+   The backend uses SQLAlchemy connected to Postgres on port `5433`.
+   ```bash
+   docker run --name rag_postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=Rag_learning -p 5433:5432 -d postgres
+   ```
+
+### 2. Local Models Setup (Ollama & Llama.cpp)
+
+This project features robust support for local, privacy-first inference:
+- **Ollama Integration**: Used for privacy-first, offline local inference. Ensure Ollama is running locally (`http://localhost:11434`) and pull your preferred model (e.g., `llama3` or `llama3.1`):
+  ```bash
+  ollama pull llama3.1
+  ```
+- **Llama.cpp Python**: Used by `offline_client.py` for direct GGUF model execution. Make sure to download a `.gguf` model file into your `backend/models` directory if you plan on running the offline local execution path.
+
+---
+
+### 3. Backend Setup
 
 1. **Navigate to the backend directory:**
    ```bash
@@ -62,13 +97,22 @@ Follow these instructions to set up the project locally.
    ```
 
 4. **Environment Variables:**
-   Create a `.env` file in the `backend` directory and configure your keys:
+   Create a `.env` file in the `backend` directory. Based on the project architecture, ensure you include the following API keys and configurations:
    ```env
-   OPENAI_API_KEY=your_openai_api_key
+   # Azure OpenAI Settings
+   AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
+   AZURE_OPENAI_API_KEY=your_azure_api_key
+   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
+   AZURE_OPENAI_API_VERSION=2024-10-21
+
+   # Hosted Model APIs
    COHERE_API_KEY=your_cohere_api_key
    GROQ_API_KEY=your_groq_api_key
+   HF_TOKEN=your_huggingface_token
+
+   # Local Services
+   REDIS_URL=redis://localhost:6380/0
    ```
-   *(Note: The system connects to Redis on `localhost:6379` by default).*
 
 5. **Start the FastAPI Server:**
    ```bash
@@ -103,7 +147,8 @@ The system operates across two primary pipelines: the **Document Ingestion Pipel
 ### 1. Document Ingestion Pipeline
 Before the system can answer queries, knowledge must be ingested. The ingestion pipeline processes raw documents into searchable vectors and keyword structures:
 - **Document Parsers**: Supports parsing files through multiple advanced loaders, including **PyMuPDF** for standard fast PDF extraction and **Docling** for deep semantic parsing.
-- **Chunking Strategy**: Documents are parsed, cleaned, and split into manageable semantic chunks using overlapping text splitters to preserve context between neighboring chunks.
+- **Chunking Strategy**: Documents are parsed, cleaned, and split into manageable semantic chunks. 
+- **Tokenization**: Uses Hugging Face's `sentence-transformers/all-MiniLM-L6-v2` tokenizer to accurately measure chunk sizes during the splitting process, ensuring token limits are strictly respected.
 - **Dual Indexing**:
   - **Dense Embedding Index (Qdrant)**: Each chunk is passed through an Embedding Model (e.g., Cohere `embed-english-v3.0`) and inserted into a Qdrant vector database for semantic similarity searches.
   - **Sparse Keyword Index (BM25)**: The same chunks are processed by a BM25 indexer to allow for exact keyword matches, which is critical for specific entity retrieval (e.g., product IDs, precise names).
